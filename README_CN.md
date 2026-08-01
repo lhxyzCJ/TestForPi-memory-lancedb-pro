@@ -19,6 +19,75 @@
 
 ---
 
+## 🤖 Pi 编程智能体移植说明
+
+本 fork 以**最小改动**将 OpenClaw 插件移植到 **[pi coding agent](https://github.com/earendil-works/pi)**（pi ≥ 0.80）：整个 OpenClaw 插件核心未改动，通过一层薄适配器（`pi-adapter/`）原样加载运行。
+
+### 改动内容
+
+| 模块 | OpenClaw（上游） | Pi（本 fork） |
+|---|---|---|
+| 扩展入口 | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → 编译产物 `dist/pi-adapter/index.js`，由 `package.json` 的 `pi.extensions` 声明 |
+| 配置文件 | `openclaw.json` 插件条目 | `~/.pi/agent/memory-lancedb-pro.json5`（或 `$MEMORY_LANCEDB_PRO_CONFIG`）——文档结构相同 |
+| 数据与会话目录 | `~/.openclaw/...` | `~/.pi/agent/...`（可用 `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR` 覆盖） |
+| CLI | `openclaw memory-pro …` | 独立命令：`memory-pro …`（由 `pi-adapter/cli-main.ts` 编译） |
+| 内嵌子智能体 | OpenClaw 运行时 API | 通过 `pi --mode json --no-tools …` 命令行调用（`pi-adapter/pi-runner.ts`） |
+| 版本号 | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+生命周期事件（`input`、`session_start`、`before_agent_start`、`agent_end`、`session_shutdown`、`tool_result`、`session_before_switch`、`session_before_fork`）由 `pi-adapter/shim.ts` 映射为 OpenClaw 钩子；插件的工具（`memory_store`、`memory_recall` 等）与 `/memory-pro` 斜杠命令经 shim 原样注册。
+
+### 安装
+
+```bash
+# 本地开发
+git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
+cd TestForPi-memory-lancedb-pro && npm install && npm run build
+
+# 在 pi 会话中加载扩展
+pi -e ./dist/pi-adapter/index.js
+# 或在 ~/.pi/agent/settings.json 中注册：
+#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
+```
+
+### 配置
+
+创建 `~/.pi/agent/memory-lancedb-pro.json5`（结构与 OpenClaw 插件条目一致）：
+
+```json5
+{
+  embedding: {
+    provider: "openai-compatible",
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024
+  },
+  autoCapture: true,
+  autoRecall: true,
+  smartExtraction: true
+}
+```
+
+### CLI
+
+```bash
+memory-pro list --scope global
+memory-pro search "查询词"
+memory-pro stats
+```
+
+### 测试
+
+```bash
+npm test                       # 完整单元/端到端测试
+node scripts/run-ci-tests.mjs --all   # 完整 CI 清单
+npm run test:pi-adapter        # pi 适配器冒烟测试（mock pi API）
+```
+
+上游全部测试保留；新增 `test/pi-adapter-smoke.test.mjs` 与 `test:pi-adapter`。本文档其余部分介绍插件本身，两个宿主通用。
+
+---
+
 ## 为什么选 memory-lancedb-pro？
 
 大多数 AI 智能体都有"失忆症"——每次新对话，之前聊过的全部清零。

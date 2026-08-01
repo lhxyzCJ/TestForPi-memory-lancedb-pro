@@ -19,6 +19,135 @@
 
 ---
 
+## 🤖 Pi 程式碼代理移植說明
+
+本 fork 以**最小改動**將 OpenClaw 外掛移植到 **[pi coding agent](https://github.com/earendil-works/pi)**（pi ≥ 0.80）：整個 OpenClaw 外掛核心未改動，透過一層薄介面卡（`pi-adapter/`）原樣載入執行。
+
+### 改動內容
+
+| 模組 | OpenClaw（上游） | Pi（本 fork） |
+|---|---|---|
+| 擴充功能入口 | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → 編譯產物 `dist/pi-adapter/index.js`，由 `package.json` 的 `pi.extensions` 宣告 |
+| 設定檔 | `openclaw.json` 外掛條目 | `~/.pi/agent/memory-lancedb-pro.json5`（或 `$MEMORY_LANCEDB_PRO_CONFIG`）——文件結構相同 |
+| 資料與會話目錄 | `~/.openclaw/...` | `~/.pi/agent/...`（可用 `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR` 覆寫） |
+| CLI | `openclaw memory-pro …` | 獨立指令：`memory-pro …`（由 `pi-adapter/cli-main.ts` 編譯） |
+| 內嵌子代理 | OpenClaw 執行時期 API | 透過 `pi --mode json --no-tools …` 命令列呼叫（`pi-adapter/pi-runner.ts`） |
+| 版本號 | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+生命週期事件（`input`、`session_start`、`before_agent_start`、`agent_end`、`session_shutdown`、`tool_result`、`session_before_switch`、`session_before_fork`）由 `pi-adapter/shim.ts` 對應為 OpenClaw 鉤子；外掛的工具（`memory_store`、`memory_recall` 等）與 `/memory-pro` 斜線指令經介面卡原樣註冊。
+
+### 安裝
+
+```bash
+# 本地開發
+git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
+cd TestForPi-memory-lancedb-pro && npm install && npm run build
+
+# 在 pi 會話中載入擴充功能
+pi -e ./dist/pi-adapter/index.js
+# 或在 ~/.pi/agent/settings.json 註冊：
+#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
+```
+
+### 設定
+
+建立 `~/.pi/agent/memory-lancedb-pro.json5`（結構與 OpenClaw 外掛條目一致）：
+
+```json5
+{
+  embedding: {
+    provider: "openai-compatible",
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024
+  },
+  autoCapture: true,
+  autoRecall: true,
+  smartExtraction: true
+}
+```
+
+### CLI
+
+```bash
+memory-pro list --scope global
+memory-pro search "查詢詞"
+memory-pro stats
+```
+
+### 測試
+
+```bash
+npm test                       # 完整單元/端對端測試
+node scripts/run-ci-tests.mjs --all   # 完整 CI 清單
+npm run test:pi-adapter        # pi 介面卡冒煙測試（mock pi API）
+```
+
+上游全部測試保留；新增 `test/pi-adapter-smoke.test.mjs` 與 `test:pi-adapter`。本文件其餘部分介紹外掛本身，兩個宿主通用。
+
+---|---|---|
+| Extension bootstrap | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → compiled `dist/pi-adapter/index.js`, declared via `pi.extensions` in `package.json` |
+| Config file | `openclaw.json` plugin entry | `~/.pi/agent/memory-lancedb-pro.json5` (or `$MEMORY_LANCEDB_PRO_CONFIG`) — same document shape |
+| Data & session base dir | `~/.openclaw/...` | `~/.pi/agent/...` (override with `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR`) |
+| CLI | `openclaw memory-pro …` | Standalone bin: `memory-pro …` (compiled from `pi-adapter/cli-main.ts`) |
+| Embedded sub-agent runner | OpenClaw runtime API | Shells out to `pi --mode json --no-tools …` (`pi-adapter/pi-runner.ts`) |
+| Version | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+Lifecycle events (`input`, `session_start`, `before_agent_start`, `agent_end`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`) are mapped to the OpenClaw hooks via `pi-adapter/shim.ts`; the plugin's tools (`memory_store`, `memory_recall`, …) and the `/memory-pro` slash command register through the shim unchanged.
+
+### 安裝
+
+```bash
+# 本地開發
+git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
+cd TestForPi-memory-lancedb-pro && npm install && npm run build
+
+# 在 pi 會話中載入擴充功能
+pi -e ./dist/pi-adapter/index.js
+# 或在 ~/.pi/agent/settings.json 註冊：
+#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
+```
+
+### 設定
+
+建立 `~/.pi/agent/memory-lancedb-pro.json5`（結構與 OpenClaw 外掛條目一致）：
+
+```json5
+{
+  embedding: {
+    provider: "openai-compatible",
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024
+  },
+  autoCapture: true,
+  autoRecall: true,
+  smartExtraction: true
+}
+```
+
+### CLI
+
+```bash
+memory-pro list --scope global
+memory-pro search "查詢詞"
+memory-pro stats
+```
+
+### 測試
+
+```bash
+npm test                       # 完整單元/端對端測試
+node scripts/run-ci-tests.mjs --all   # 完整 CI 清單
+npm run test:pi-adapter        # pi 介面卡冒煙測試（mock pi API）
+```
+
+上游全部測試保留；新增 `test/pi-adapter-smoke.test.mjs` 與 `test:pi-adapter`。本文件其餘部分介紹外掛本身，兩個宿主通用。
+
+---
+
 ## 為什麼選 memory-lancedb-pro？
 
 大多數 AI 智慧體都有「失憶症」——每次新對話，之前聊過的全部清零。
