@@ -54,13 +54,13 @@ const pkg = readJson("package.json");
 
 verifyCompiledRuntime(pkg.main, "package.json main");
 
-const extensions = pkg.openclaw?.extensions;
+const extensions = pkg.pi?.extensions;
 if (!Array.isArray(extensions) || extensions.length === 0) {
-  fail("package.json openclaw.extensions must list at least one runtime entry");
+  fail("package.json pi.extensions must list at least one runtime entry");
 }
 
 for (const extension of extensions) {
-  verifyCompiledRuntime(extension, "package.json openclaw.extensions entry");
+  verifyCompiledRuntime(extension, "package.json pi.extensions entry");
 }
 
 const files = Array.isArray(pkg.files) ? pkg.files : [];

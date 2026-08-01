@@ -21,9 +21,9 @@ describe("mdMirror fallback directory", () => {
     assert.ok(path.isAbsolute(dir), `expected absolute path, got: ${dir}`);
   });
 
-  it("resolves inside ~/.openclaw/memory/md-mirror", () => {
+  it("resolves inside ~/.pi/agent/memory/md-mirror", () => {
     const dir = getDefaultMdMirrorDir();
-    const expected = path.join(homedir(), ".openclaw", "memory", "md-mirror");
+    const expected = path.join(homedir(), ".pi", "agent", "memory", "md-mirror");
     assert.equal(dir, expected);
   });
 

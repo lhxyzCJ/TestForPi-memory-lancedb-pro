@@ -516,7 +516,7 @@ function resolveWorkspaceDir(toolCtx: unknown, fallback?: string): string {
   const runtimePath = typeof runtime?.workspaceDir === "string" ? runtime.workspaceDir.trim() : "";
   if (runtimePath) return runtimePath;
   if (fallback && fallback.trim()) return fallback;
-  return join(homedir(), ".openclaw", "workspace");
+  return join(homedir(), ".pi", "agent");
 }
 
 function escapeRegExp(input: string): string {

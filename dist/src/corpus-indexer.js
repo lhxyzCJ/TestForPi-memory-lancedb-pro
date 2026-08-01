@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { readFile, readdir, stat } from "node:fs/promises";
 const DEFAULT_MAX_FILE_BYTES = 1_000_000;
 const DEFAULT_CORPUS_CHUNK_MAX_CHARS = 4_000;
@@ -138,7 +138,7 @@ export function resolveCanonicalCorpusWorkspaces(cfg, homeDir = homedir()) {
     const defaults = isRecord(agents?.defaults) ? agents.defaults : undefined;
     add(defaults?.workspace ?? defaults?.workspaceDir ?? defaults?.cwd, "main");
     if (byWorkspace.size === 0) {
-        byWorkspace.set(join(homeDir, ".openclaw", "workspace"), new Set(["main"]));
+        byWorkspace.set(join(homeDir, ".pi", "agent"), new Set(["main"]));
     }
     return [...byWorkspace.entries()].map(([workspaceDir, agentIds]) => ({
         workspaceDir,
@@ -248,22 +248,14 @@ async function discoverSessionDocuments(workspace, config, homeDir = homedir()) 
     if (!config.includeSessionTranscripts || config.maxSessionFilesPerAgent === 0)
         return [];
     const docs = [];
+    // pi session layout: ~/.pi/agent/sessions/--<cwd>--/*.jsonl (one subdir per project)
+    const sessionsRoot = join(homeDir, ".pi", "agent", "sessions");
     for (const agentId of workspace.agentIds) {
-        const sessionsDir = join(homeDir, ".openclaw", "agents", agentId, "sessions");
-        const entries = await readdir(sessionsDir, { withFileTypes: true }).catch(() => []);
-        const candidates = await Promise.all(entries
-            .filter((entry) => entry.isFile() && entry.name.endsWith(".jsonl"))
-            .map(async (entry) => {
-            const absolutePath = join(sessionsDir, entry.name);
-            const info = await stat(absolutePath).catch(() => null);
-            return info && info.isFile() ? { absolutePath, name: entry.name, mtimeMs: info.mtimeMs, size: info.size } : null;
-        }));
-        const recent = candidates
-            .filter((entry) => entry !== null)
+        const candidates = (await listSessionFilesRecursive(sessionsRoot))
             .filter((entry) => entry.size <= config.maxFileBytes)
             .sort((left, right) => right.mtimeMs - left.mtimeMs)
             .slice(0, config.maxSessionFilesPerAgent);
-        for (const entry of recent) {
+        for (const entry of candidates) {
             const raw = await readFile(entry.absolutePath, "utf8").catch(() => "");
             const rendered = renderSessionTranscript(raw);
             if (!rendered.trim())
@@ -273,7 +265,7 @@ async function discoverSessionDocuments(workspace, config, homeDir = homedir()) 
                 agentId,
                 source: "sessions",
                 kind: "session-transcript",
-                relativePath: `${SESSION_INDEX_PREFIX}/${agentId}/${basename(entry.name)}`,
+                relativePath: `${SESSION_INDEX_PREFIX}/${agentId}/${entry.name}`,
                 absolutePath: entry.absolutePath,
                 content: rendered,
                 mtimeMs: entry.mtimeMs,
@@ -281,6 +273,29 @@ async function discoverSessionDocuments(workspace, config, homeDir = homedir()) 
         }
     }
     return docs;
+}
+async function listSessionFilesRecursive(rootDir) {
+    const out = [];
+    const entries = await readdir(rootDir, { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+        const absolutePath = join(rootDir, entry.name);
+        if (entry.isDirectory()) {
+            out.push(...await listSessionFilesRecursive(absolutePath));
+        }
+        else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+            const info = await stat(absolutePath).catch(() => null);
+            if (info && info.isFile()) {
+                // relative path from sessions root with / separators (read side resolves it)
+                out.push({
+                    absolutePath,
+                    name: absolutePath.slice(rootDir.length + 1).split(sep).join("/"),
+                    mtimeMs: info.mtimeMs,
+                    size: info.size,
+                });
+            }
+        }
+    }
+    return out;
 }
 function trimChunkLines(lines, startLine) {
     let first = 0;
@@ -575,7 +590,8 @@ export class CanonicalCorpusIndexer {
         }
         else if (readPath.source === "sessions") {
             const parts = readPath.relativePath.split("/");
-            absolutePath = join(this.params.homeDir ?? homedir(), ".openclaw", "agents", parts[1], "sessions", parts[2]);
+            // relativePath is "sessions/<subdir>/<file>" — subdir + file live under the pi sessions root
+            absolutePath = join(this.params.homeDir ?? homedir(), ".pi", "agent", "sessions", ...parts.slice(1));
             const raw = await readFile(absolutePath, "utf8").catch(() => null);
             if (raw != null) {
                 content = renderSessionTranscript(raw);

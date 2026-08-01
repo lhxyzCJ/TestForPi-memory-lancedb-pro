@@ -16,11 +16,9 @@ function escapeRegExp(value) {
 }
 
 const pkg = readJson("package.json");
-const manifest = readJson("openclaw.plugin.json");
 const releaseChecklist = readText("docs/release-checklist.md");
 
-assert.equal(pkg.version, manifest.version, "package and plugin manifest versions must match before release");
-assert.match(pkg.version, /^1\.1\.0-beta\.\d+$/, "current release target should remain an explicit v1.1.0 beta");
+assert.match(pkg.version, /^1\.1\.0-beta\.\d+(?:-pi\.\d+)?$/, "current release target should remain an explicit v1.1.0 beta");
 
 for (const changelogPath of ["CHANGELOG.md", "CHANGELOG-v1.1.0.md"]) {
   const changelog = readText(changelogPath);
@@ -31,15 +29,15 @@ for (const changelogPath of ["CHANGELOG.md", "CHANGELOG-v1.1.0.md"]) {
   );
 }
 
-assert.equal(pkg.main, "dist/index.js");
-assert.deepEqual(pkg.openclaw?.extensions, ["./dist/index.js"]);
+assert.equal(pkg.main, "dist/pi-adapter/index.js");
+assert.deepEqual(pkg.pi?.extensions, ["./dist/pi-adapter/index.js"]);
 assert.ok(pkg.files?.includes("dist/**/*"), "published files should include compiled dist output");
 assert.ok(pkg.files?.includes("docs/**/*.md"), "release checklist should be included in package docs");
 
 assert.match(releaseChecklist, /npm run test:packaging-and-workflow/);
 assert.match(releaseChecklist, /npm pack --dry-run/);
 assert.match(releaseChecklist, /npm publish --tag beta --dry-run/);
-assert.match(releaseChecklist, /npm view memory-lancedb-pro@beta version main openclaw files --json/);
+assert.match(releaseChecklist, /npm view memory-lancedb-pro@beta version main pi files --json/);
 
 assert.ok(
   CI_TEST_MANIFEST.some((entry) => entry.file === "test/release-readiness.test.mjs"),

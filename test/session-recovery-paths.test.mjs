@@ -8,13 +8,13 @@ const jiti = jitiFactory(import.meta.url, { interopDefault: true });
 const { resolveReflectionSessionSearchDirs } = jiti("../src/session-recovery.ts");
 
 describe("memory-reflection session recovery search dirs", () => {
-  it("includes OpenClaw agent session dirs derived from config and keeps workspace/sessions fallback", () => {
+  it("includes pi agent session dirs derived from config and keeps workspace/sessions fallback", () => {
     const cfg = {
       agents: {
-        defaults: { workspace: "/root/.openclaw/workspace" },
+        defaults: { workspace: "/root/.pi/agent" },
         list: [
           { id: "main" },
-          { id: "theia", workspace: "/root/.openclaw/workspace/agents/theia" },
+          { id: "theia", workspace: "/root/.pi/agent/workspaces/theia" },
         ],
       },
     };
@@ -22,18 +22,18 @@ describe("memory-reflection session recovery search dirs", () => {
     const dirs = resolveReflectionSessionSearchDirs({
       context: { sessionEntry: { sessionId: "s-1" } },
       cfg,
-      workspaceDir: "/root/.openclaw/workspace",
+      workspaceDir: "/root/.pi/agent",
       currentSessionFile: undefined,
       sourceAgentId: "theia",
     });
 
     assert.ok(
-      dirs.includes(path.join("/root/.openclaw", "agents", "theia", "sessions")),
-      "expected theia agent sessions dir to be searched",
+      dirs.includes(path.join("/root/.pi/agent", "sessions")),
+      "expected pi agent sessions dir to be searched",
     );
     assert.ok(
-      dirs.includes(path.join("/root/.openclaw/workspace", "sessions")),
-      "expected legacy workspace/sessions fallback to stay enabled",
+      dirs.includes(path.join("/root/.pi/agent", "sessions")),
+      "expected workspace/sessions fallback to stay enabled",
     );
   });
 

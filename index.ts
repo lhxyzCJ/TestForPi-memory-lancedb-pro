@@ -13,11 +13,11 @@ import { pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 
-// Detect CLI mode: when running as a CLI subcommand (e.g. `openclaw memory-pro stats`),
-// OpenClaw sets OPENCLAW_CLI=1 in the process environment. Registration and
-// lifecycle logs are noisy in CLI context (printed to stderr before command output),
-// so we downgrade them to debug level when running in CLI mode.
-const isCliMode = () => process.env.OPENCLAW_CLI === "1";
+// Detect CLI mode: OpenClaw set OPENCLAW_CLI=1 when running as a CLI
+// subcommand. The pi port has its own standalone CLI entry (bin/memory-pro),
+// which sets MEMORY_LANCEDB_PRO_CLI=1. Registration and lifecycle logs are
+// noisy in CLI context, so we downgrade them to debug level.
+const isCliMode = () => process.env.OPENCLAW_CLI === "1" || process.env.MEMORY_LANCEDB_PRO_CLI === "1";
 
 // register() can run several times per gateway boot (one per registration
 // context) and once per CLI command; the dual-memory hint only needs to be
@@ -364,17 +364,17 @@ type ReflectionInjectMode = "inheritance-only" | "inheritance+derived";
 
 function getDefaultDbPath(): string {
   const home = homedir();
-  return join(home, ".openclaw", "memory", "lancedb-pro");
+  return join(home, ".pi", "agent", "memory", "lancedb-pro");
 }
 
 function getDefaultWorkspaceDir(): string {
   const home = homedir();
-  return join(home, ".openclaw", "workspace");
+  return join(home, ".pi", "agent");
 }
 
 function getDefaultMdMirrorDir(): string {
   const home = homedir();
-  return join(home, ".openclaw", "memory", "md-mirror");
+  return join(home, ".pi", "agent", "memory", "md-mirror");
 }
 
 function resolveWorkspaceDirFromContext(context: Record<string, unknown> | undefined): string {
@@ -893,24 +893,14 @@ export async function loadEmbeddedPiRunner(api: OpenClawPluginApi): Promise<Embe
     }
   }
 
-  // Layer 2: Fallback 舊 extensionAPI.js
+  // Layer 2: Fallback — in the pi port the pi CLI runner is always provided via
+  // the shim's api.runtime.agent.runEmbeddedPiAgent; a missing Layer 1 is an
+  // integration error.
   if (!embeddedPiRunnerPromise) {
     embeddedPiRunnerPromise = (async () => {
-      const importErrors: string[] = [];
-      for (const specifier of getExtensionApiImportSpecifiers()) {
-        try {
-          const mod = await import(specifier);
-          const runner = (mod as Record<string, unknown>).runEmbeddedPiAgent;
-          if (typeof runner === "function") return runner as EmbeddedPiRunner;
-          importErrors.push(`${specifier}: runEmbeddedPiAgent export not found`);
-        } catch (err) {
-          importErrors.push(`${specifier}: ${err instanceof Error ? err.message : String(err)}`);
-        }
-      }
       throw new Error(
-        `Unable to load OpenClaw embedded runtime API. ` +
-        `Set OPENCLAW_EXTENSION_API_PATH if runtime layout differs. ` +
-        `Attempts: ${importErrors.join(" | ")}`
+        `Unable to load embedded pi agent runner: api.runtime.agent.runEmbeddedPiAgent is not available. ` +
+        `Ensure the extension is loaded through pi-adapter (pi / pi -e ./pi-adapter/index.ts).`,
       );
     })();
   }

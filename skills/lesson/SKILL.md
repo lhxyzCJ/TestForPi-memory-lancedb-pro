@@ -1,7 +1,7 @@
 ---
 name: lesson
-description: Store a lesson learned from the current conversation. Triggered by /lesson command. Use when Master signals that the recent conversation contains a pitfall, fix, or key insight that should be persisted to long-term memory.
-metadata: { "openclaw": { "requires": { "config": ["plugins.entries.memory-lancedb-pro.enabled"] } } }
+description: Store a lesson learned from the current conversation. Triggered by /lesson command. Use when the user signals that the recent conversation contains a pitfall, fix, or key insight that should be persisted to long-term memory.
+metadata: { "memory-lancedb-pro": { "requires": { "tools": ["memory_store", "memory_recall"] } } }
 ---
 
 # Lesson Extraction & Storage

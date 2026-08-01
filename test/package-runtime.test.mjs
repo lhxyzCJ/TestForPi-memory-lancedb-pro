@@ -16,8 +16,8 @@ assert.equal(
   "npm run verify-package-runtime",
   "prepack should use the build-and-verify package runtime script",
 );
-assert.equal(pkg.main, "dist/index.js");
-assert.deepEqual(pkg.openclaw?.extensions, ["./dist/index.js"]);
+assert.equal(pkg.main, "dist/pi-adapter/index.js");
+assert.deepEqual(pkg.pi?.extensions, ["./dist/pi-adapter/index.js"]);
 assert.ok(
   pkg.files?.includes("dist/**/*"),
   "published package files should include compiled dist output",

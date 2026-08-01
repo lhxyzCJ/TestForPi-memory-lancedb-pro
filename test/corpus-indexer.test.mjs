@@ -16,7 +16,7 @@ const homeDir = path.join(tempRoot, "home");
 const workspaceDir = path.join(tempRoot, "workspace");
 const memoryDir = path.join(workspaceDir, "memory");
 const dreamingDir = path.join(memoryDir, "dreaming");
-const sessionsDir = path.join(homeDir, ".openclaw", "agents", "main", "sessions");
+const sessionsDir = path.join(homeDir, ".pi", "agent", "sessions", "main");
 
 mkdirSync(dreamingDir, { recursive: true });
 mkdirSync(sessionsDir, { recursive: true });

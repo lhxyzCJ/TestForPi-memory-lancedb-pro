@@ -43,7 +43,7 @@ describe("SDK Migration Bug 2 — static smoke tests", () => {
     const content = readFileSync(INDEX_PATH, "utf-8");
     // Layer 1 new API check must appear BEFORE Layer 2 fallback
     const layer1Idx = content.indexOf("(api as unknown");
-    const layer2Idx = content.indexOf("// Layer 2: Fallback 舊 extensionAPI.js");
+    const layer2Idx = content.indexOf("// Layer 2: Fallback");
     assert.ok(layer1Idx > 0, "Layer 1 api runtime check must exist");
     assert.ok(layer2Idx > 0, "Layer 2 fallback comment must exist");
     assert.ok(layer1Idx < layer2Idx, "Layer 1 must appear before Layer 2 in source order");
@@ -85,11 +85,13 @@ describe("SDK Migration Bug 2 — static smoke tests", () => {
     assert.match(content, cachePattern, "Layer 2 fallback must still use embeddedPiRunnerPromise cache");
   });
 
-  it("Layer 2 fallback uses correct specifier list", () => {
+  it("Layer 2 fallback explains the pi port runner contract", () => {
     const content = readFileSync(INDEX_PATH, "utf-8");
-    // The fallback must still try getExtensionApiImportSpecifiers()
-    const fallbackPattern = /getExtensionApiImportSpecifiers\(\)/;
-    assert.match(content, fallbackPattern, "Layer 2 fallback must still use getExtensionApiImportSpecifiers()");
+    // In the pi port the runner always arrives via api.runtime.agent
+    // (pi-adapter/shim.ts); Layer 2 must fail with an actionable message
+    // instead of probing OpenClaw runtime paths.
+    const fallbackPattern = /api\.runtime\.agent\.runEmbeddedPiAgent is not available/;
+    assert.match(content, fallbackPattern, "Layer 2 fallback must reference the pi runner contract");
   });
 });
 

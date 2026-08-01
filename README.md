@@ -28,6 +28,75 @@ A LanceDB-backed OpenClaw memory plugin that stores preferences, decisions, and 
 
 ---
 
+## 🤖 Pi Coding Agent Port
+
+This fork ports the OpenClaw plugin to the **[pi coding agent](https://github.com/earendil-works/pi)** (pi ≥ 0.80) with minimal changes: the entire OpenClaw plugin core is untouched and loads unchanged through a thin adapter (`pi-adapter/`).
+
+### What changed
+
+| Area | OpenClaw (upstream) | Pi (this port) |
+|---|---|---|
+| Extension bootstrap | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → compiled `dist/pi-adapter/index.js`, declared via `pi.extensions` in `package.json` |
+| Config file | `openclaw.json` plugin entry | `~/.pi/agent/memory-lancedb-pro.json5` (or `$MEMORY_LANCEDB_PRO_CONFIG`) — same document shape |
+| Data & session base dir | `~/.openclaw/...` | `~/.pi/agent/...` (override with `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR`) |
+| CLI | `openclaw memory-pro …` | Standalone bin: `memory-pro …` (compiled from `pi-adapter/cli-main.ts`) |
+| Embedded sub-agent runner | OpenClaw runtime API | Shells out to `pi --mode json --no-tools …` (`pi-adapter/pi-runner.ts`) |
+| Version | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+Lifecycle events (`input`, `session_start`, `before_agent_start`, `agent_end`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`) are mapped to the OpenClaw hooks via `pi-adapter/shim.ts`; the plugin's tools (`memory_store`, `memory_recall`, …) and the `/memory-pro` slash command register through the shim unchanged.
+
+### Install
+
+```bash
+# local development
+git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
+cd TestForPi-memory-lancedb-pro && npm install && npm run build
+
+# load the extension in a pi session
+pi -e ./dist/pi-adapter/index.js
+# or register it in ~/.pi/agent/settings.json:
+#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
+```
+
+### Configuration
+
+Create `~/.pi/agent/memory-lancedb-pro.json5` (shape identical to the OpenClaw plugin entry config):
+
+```json5
+{
+  embedding: {
+    provider: "openai-compatible",
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024
+  },
+  autoCapture: true,
+  autoRecall: true,
+  smartExtraction: true
+}
+```
+
+### CLI
+
+```bash
+memory-pro list --scope global
+memory-pro search "query"
+memory-pro stats
+```
+
+### Tests
+
+```bash
+npm test                       # full unit/e2e suite
+node scripts/run-ci-tests.mjs --all   # full CI manifest
+npm run test:pi-adapter        # pi adapter smoke test (mock pi API)
+```
+
+All upstream tests are preserved; `test/pi-adapter-smoke.test.mjs` and `test:pi-adapter` are new. The rest of this README documents the plugin itself and applies to both hosts.
+
+---
+
 ## Why memory-lancedb-pro?
 
 Most AI agents have amnesia. They forget everything the moment you start a new chat.

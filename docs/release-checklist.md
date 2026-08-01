@@ -26,9 +26,8 @@ npm pack --dry-run
 
 Confirm:
 
-- `package.json` and `openclaw.plugin.json` versions match
-- `package.json main` points at `dist/index.js`
-- `package.json openclaw.extensions` points at `./dist/index.js`
+- `package.json main` points at `dist/pi-adapter/index.js`
+- `package.json pi.extensions` points at `./dist/pi-adapter/index.js`
 - `package.json files` includes `dist/**/*`
 - `CHANGELOG.md` and `CHANGELOG-v1.1.0.md` start with the package version
 - `npm pack --dry-run` includes compiled `dist` output and excludes test files
@@ -51,7 +50,7 @@ After publish, verify the public registry state:
 
 ```bash
 npm view memory-lancedb-pro dist-tags version versions --json
-npm view memory-lancedb-pro@beta version main openclaw files --json
+npm view memory-lancedb-pro@beta version main pi files --json
 ```
 
 The `beta` dist-tag should point at the newly published version, and the package

@@ -101,13 +101,19 @@ function resolveOpenClawConfigPath(explicit?: string): string {
     return path.resolve(fromEnv);
   }
 
-  return path.join(openclawHome, "openclaw.json");
+  return path.join(openclawHome, "memory-lancedb-pro.json5");
 }
 
 function resolveOpenClawHome(): string {
-  return process.env.OPENCLAW_HOME?.trim()
-    ? path.resolve(process.env.OPENCLAW_HOME.trim())
-    : path.join(homedir(), ".openclaw");
+  return process.env.PI_CODING_AGENT_DIR?.trim()
+    || process.env.PI_AGENT_DIR?.trim()
+    || process.env.OPENCLAW_HOME?.trim()
+    ? path.resolve(
+        process.env.PI_CODING_AGENT_DIR?.trim()
+        || process.env.PI_AGENT_DIR?.trim()
+        || process.env.OPENCLAW_HOME!.trim(),
+      )
+    : path.join(homedir(), ".pi", "agent");
 }
 
 function resolveDefaultOauthPath(): string {

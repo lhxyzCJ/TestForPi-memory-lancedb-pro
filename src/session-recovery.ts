@@ -1,4 +1,5 @@
 import { dirname, join } from "node:path";
+import { homedir } from "node:os";
 
 function asNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
@@ -11,19 +12,28 @@ export function stripResetSuffix(fileName: string): string {
   return resetIndex === -1 ? fileName : fileName.slice(0, resetIndex);
 }
 
-function deriveOpenClawHomeFromWorkspacePath(workspacePath: string): string | undefined {
-  const normalized = workspacePath.trim().replace(/[\\/]+$/, "");
-  if (!normalized) return undefined;
-  const matched = normalized.match(/^(.*?)[\\/]workspace(?:[\\/].*)?$/);
-  if (!matched || !matched[1]) return undefined;
-  const home = matched[1].trim();
-  return home.length ? home : undefined;
+function defaultPiAgentHome(): string {
+  return process.env.PI_CODING_AGENT_DIR?.trim()
+    || process.env.PI_AGENT_DIR?.trim()
+    || join(homedir(), ".pi", "agent");
 }
 
-function deriveOpenClawHomeFromSessionFilePath(sessionFilePath: string): string | undefined {
+function derivePiAgentHomeFromWorkspacePath(workspacePath: string): string | undefined {
+  const normalized = workspacePath.trim().replace(/[\\/]+$/, "");
+  if (!normalized) return undefined;
+  // Exact agent home or inside it: ~/.pi/agent[/...]
+  const agentHome = normalized.match(/^(.*?[\\/]\.pi[\\/]agent)(?:[\\/].*)?$/);
+  if (agentHome) return agentHome[1];
+  // Project-local .pi dir: <proj>/.pi → its sessions live at <proj>/.pi/sessions
+  if (/[\\/]\.pi$/.test(normalized)) return normalized;
+  return undefined;
+}
+
+function derivePiAgentHomeFromSessionFilePath(sessionFilePath: string): string | undefined {
   const normalized = sessionFilePath.trim();
   if (!normalized) return undefined;
-  const matched = normalized.match(/^(.*?)[\\/]agents[\\/][^\\/]+[\\/]sessions(?:[\\/][^\\/]+)?$/);
+  // ~/.pi/agent/sessions/.../xxx.jsonl
+  const matched = normalized.match(/^(.*?)[\\/]\.pi[\\/]agent[\\/]sessions(?:[\\/][^\\/]+)?$/);
   if (!matched || !matched[1]) return undefined;
   const home = matched[1].trim();
   return home.length ? home : undefined;
@@ -87,29 +97,31 @@ export function resolveReflectionSessionSearchDirs(params: {
   }
   addDir(join(params.workspaceDir, "sessions"));
 
-  const openclawHomes: string[] = [];
-  addHome(openclawHomes, asNonEmptyString(process.env.OPENCLAW_HOME));
-  addHome(openclawHomes, deriveOpenClawHomeFromWorkspacePath(params.workspaceDir));
+  const piHomes: string[] = [];
+  addHome(piHomes, asNonEmptyString(process.env.PI_CODING_AGENT_DIR));
+  addHome(piHomes, asNonEmptyString(process.env.PI_AGENT_DIR));
+  addHome(piHomes, defaultPiAgentHome());
+  addHome(piHomes, derivePiAgentHomeFromWorkspacePath(params.workspaceDir));
   if (params.currentSessionFile) {
-    addHome(openclawHomes, deriveOpenClawHomeFromSessionFilePath(params.currentSessionFile));
+    addHome(piHomes, derivePiAgentHomeFromSessionFilePath(params.currentSessionFile));
   }
   for (const entry of sessionEntries) {
     const entryFile = asNonEmptyString(entry.sessionFile);
-    if (entryFile) addHome(openclawHomes, deriveOpenClawHomeFromSessionFilePath(entryFile));
+    if (entryFile) addHome(piHomes, derivePiAgentHomeFromSessionFilePath(entryFile));
   }
   try {
     const root = params.cfg as Record<string, unknown>;
     const agents = root.agents as Record<string, unknown> | undefined;
     const defaults = agents?.defaults as Record<string, unknown> | undefined;
     const defaultWorkspace = asNonEmptyString(defaults?.workspace);
-    if (defaultWorkspace) addHome(openclawHomes, deriveOpenClawHomeFromWorkspacePath(defaultWorkspace));
+    if (defaultWorkspace) addHome(piHomes, derivePiAgentHomeFromWorkspacePath(defaultWorkspace));
 
     const list = agents?.list as unknown;
     if (Array.isArray(list)) {
       for (const item of list) {
         if (!item || typeof item !== "object") continue;
         const workspace = asNonEmptyString((item as Record<string, unknown>).workspace);
-        if (workspace) addHome(openclawHomes, deriveOpenClawHomeFromWorkspacePath(workspace));
+        if (workspace) addHome(piHomes, derivePiAgentHomeFromWorkspacePath(workspace));
       }
     }
   } catch {
@@ -127,10 +139,8 @@ export function resolveReflectionSessionSearchDirs(params: {
   }
   addAgentId(agentIds, "main");
 
-  for (const home of openclawHomes) {
-    for (const agentId of agentIds) {
-      addDir(join(home, "agents", agentId, "sessions"));
-    }
+  for (const home of piHomes) {
+    addDir(join(home, "sessions"));
   }
 
   return out;

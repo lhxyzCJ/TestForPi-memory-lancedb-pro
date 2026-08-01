@@ -24,6 +24,7 @@
     "index.ts",
     "cli.ts",
     "src/**/*.ts",
+    "pi-adapter/**/*.ts",
     "types/**/*.d.ts"
   ],
   "exclude": [

@@ -1,3 +1,15 @@
+## 1.1.0-beta.11-pi.1 (pi coding agent port)
+
+- Port the OpenClaw plugin to the pi coding agent extension system.
+- New `pi-adapter/` layer: OpenClaw API shim (events, tools, CLI, service lifecycle) on top of `pi.on`/`pi.registerTool`/`pi.registerCommand`.
+- Event mapping: `before_prompt_build` → `before_agent_start`, `agent_end` → `agent_end`, `session_end` → `session_shutdown`, `after_tool_call` → `tool_result`, `command:new`/`before_reset` → `session_before_switch`, `gateway_start`/`agent:bootstrap` → `session_start`.
+- Auto-recall context now injects via the per-turn system prompt (pi has no ephemeral prompt context).
+- Storage defaults moved to `~/.pi/agent/memory/lancedb-pro`; config document read from `~/.pi/agent/memory-lancedb-pro.json5`.
+- Session transcript indexing reads the pi session layout (`~/.pi/agent/sessions/**/*.jsonl`).
+- Embedded reflection/dreaming sub-agents run through the `pi` CLI (`--mode json -p`) instead of the OpenClaw embedded runtime.
+- Management CLI now ships as a standalone `memory-pro` bin and as the `/memory-pro` pi slash command.
+- The pi package declares its runtime entry via `pi.extensions` (`openclaw.plugin.json` is kept in the repo but no longer drives packaging).
+
 ## 1.1.0-beta.11 (OpenClaw 2026.5 runtime compatibility)
 
 - Ship compiled `dist/index.js` runtime and point package/OpenClaw extension entries at it.

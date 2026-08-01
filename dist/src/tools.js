@@ -369,7 +369,7 @@ function resolveWorkspaceDir(toolCtx, fallback) {
         return runtimePath;
     if (fallback && fallback.trim())
         return fallback;
-    return join(homedir(), ".openclaw", "workspace");
+    return join(homedir(), ".pi", "agent");
 }
 function escapeRegExp(input) {
     return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

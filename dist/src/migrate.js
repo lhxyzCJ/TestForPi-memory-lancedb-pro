@@ -33,6 +33,7 @@ function getDefaultLegacyPaths() {
     const home = homedir();
     return [
         join(home, ".openclaw", "memory", "lancedb"),
+        join(home, ".pi", "agent", "memory", "lancedb"),
         join(home, ".claude", "memory", "lancedb"),
         // Add more legacy paths as needed
     ];
