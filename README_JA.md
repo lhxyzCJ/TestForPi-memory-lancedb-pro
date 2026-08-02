@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🧠 memory-lancedb-pro · 🦞OpenClaw Plugin
+# 🧠 memory-lancedb-pro · π Pi Coding Agent Extension
 
-**[OpenClaw](https://github.com/openclaw/openclaw) エージェント向け AI メモリアシスタント**
+**AI Memory Assistant for the [pi coding agent](https://github.com/earendil-works/pi)**
 
-*あなたの AI エージェントに本物の記憶力を——セッションを超え、エージェントを超え、時間を超えて。*
+*Give your AI agent a brain that actually remembers — across sessions, across projects, across time.*
 
-LanceDB ベースの OpenClaw 長期メモリプラグイン。好み・意思決定・プロジェクトコンテキストを自動保存し、将来のセッションで自動的に想起します。
+A LanceDB-backed memory extension for pi that stores preferences, decisions, and project context, then auto-recalls them in future sessions.
 
-[![OpenClaw Plugin](https://img.shields.io/badge/OpenClaw-Plugin-blue)](https://github.com/openclaw/openclaw)
-[![npm version](https://img.shields.io/npm/v/memory-lancedb-pro)](https://www.npmjs.com/package/memory-lancedb-pro)
+[![Pi Extension](https://img.shields.io/badge/Pi-Extension-blue)](https://github.com/earendil-works/pi)
+[![Pi 0.80+](https://img.shields.io/badge/pi-0.80%2B-brightgreen)](https://github.com/earendil-works/pi)
 [![LanceDB](https://img.shields.io/badge/LanceDB-Vectorstore-orange)](https://lancedb.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -19,39 +19,101 @@ LanceDB ベースの OpenClaw 長期メモリプラグイン。好み・意思�
 
 ---
 
-## 🤖 Pi Coding Agent Port
+## 🤖 本ポートについて
 
-This fork ports the OpenClaw plugin to the **[pi coding agent](https://github.com/earendil-works/pi)** (pi ≥ 0.80) with minimal changes: the entire OpenClaw plugin core is untouched and loads unchanged through a thin adapter (`pi-adapter/`).
+このリポジトリは、本番グレードのメモリプラグイン [memory-lancedb-pro](https://github.com/CortexReach/memory-lancedb-pro)（MIT）の **pi コーディングエージェント向けポート**です。OpenClaw プラグインのコア全体は無変更のまま、薄いアダプタ（`pi-adapter/`）を通してそのまま読み込まれるため、pi（≥ 0.80）は上流とほとんど乖離せずに、同じ LanceDB ベースのメモリエンジンを利用できます。
 
-### What changed
+> 以下はすべて pi での利用体験を説明しています。ポート差分の表と元の OpenClaw での利用方法については、末尾の [OpenClaw Upstream Appendix](#openclaw-upstream-appendix) を参照してください。
 
-| Area | OpenClaw (upstream) | Pi (this port) |
-|---|---|---|
-| Extension bootstrap | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → compiled `dist/pi-adapter/index.js`, declared via `pi.extensions` in `package.json` |
-| Config file | `openclaw.json` plugin entry | `~/.pi/agent/memory-lancedb-pro.json5` (or `$MEMORY_LANCEDB_PRO_CONFIG`) — same document shape |
-| Data & session base dir | `~/.openclaw/...` | `~/.pi/agent/...` (override with `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR`) |
-| CLI | `openclaw memory-pro …` | Standalone bin: `memory-pro …` (compiled from `pi-adapter/cli-main.ts`) |
-| Embedded sub-agent runner | OpenClaw runtime API | Shells out to `pi --mode json --no-tools …` (`pi-adapter/pi-runner.ts`) |
-| Version | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+---
 
-Lifecycle events (`input`, `session_start`, `before_agent_start`, `agent_end`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`) are mapped to the OpenClaw hooks via `pi-adapter/shim.ts`; the plugin's tools (`memory_store`, `memory_recall`, …) and the `/memory-pro` slash command register through the shim unchanged.
+## memory-lancedb-pro を選ぶ理由
 
-### Install
+ほとんどの AI エージェントには記憶喪失があります。新しいチャットを始めた瞬間に、すべてを忘れてしまいます。
+
+**memory-lancedb-pro** は、エージェントを **AI メモリアシスタント**に変える本番グレードの長期記憶拡張です。重要なことを自動的に捕捉し、ノイズは自然に消えていき、必要なときに正しい記憶を取得します。手動でのタグ付けも、設定の煩わしさもありません。
+
+### 実際の動作:あなたの AI メモリアシスタント
+
+**メモリがない場合 — すべてのセッションがゼロから始まります:**
+
+> **あなた:** 「インデントはタブを使って、常にエラーハンドリングを追加して。」
+> *(次のセッション)*
+> **あなた:** 「言ったでしょ — タブでしょ、スペースじゃなくて!」 😤
+> *(次のセッション)*
+> **あなた:** 「…だから、タブ。それとエラーハンドリング。また言わせないで。」
+
+**memory-lancedb-pro を使う場合 — エージェントは学習し、覚えています:**
+
+> **あなた:** 「インデントはタブを使って、常にエラーハンドリングを追加して。」
+> *(次のセッション — エージェントがあなたの好みを自動リコール)*
+> **エージェント:** *(黙ってタブ + エラーハンドリングを適用)* ✅
+> **あなた:** 「先月、PostgreSQL を MongoDB の代わりに選んだのはなぜ?」
+> **エージェント:** 「2 月 12 日の議論によると、主な理由は…」 ✅
+
+これが **AI メモリアシスタント**がもたらす違いです — あなたのスタイルを学習し、過去の意思決定を呼び戻し、あなたが同じことを繰り返さなくてもパーソナライズされた応答を返します。
+
+### 他に何ができるのか?
+
+| | 得られるもの |
+|---|---|
+| **自動捕捉 (Auto-Capture)** | 手動の `memory_store` なしで、あらゆる会話からエージェントが学習 |
+| **スマート抽出 (Smart Extraction)** | LLM による 6 カテゴリ分類:プロフィール、好み、エンティティ、イベント、事例、パターン |
+| **インテリジェント忘却 (Intelligent Forgetting)** | Weibull 減衰モデル — 重要な記憶は残り、ノイズは自然に消えていく |
+| **ハイブリッド検索 (Hybrid Retrieval)** | ベクター + BM25 全文検索、クロスエンコーダー再ランキングで融合 |
+| **コンテキスト注入 (Context Injection)** | 各応答の前に、関連する記憶が自動的に表面化 |
+| **マルチスコープ分離 (Multi-Scope Isolation)** | エージェント単位・ユーザー単位・プロジェクト単位のメモリ境界 |
+| **任意のプロバイダー (Any Provider)** | OpenAI、Jina、Gemini、Ollama、または任意の OpenAI 互換 API |
+| **完全なツールキット (Full Toolkit)** | CLI、バックアップ、マイグレーション、アップグレード、エクスポート/インポート — 本番対応 |
+
+---
+
+## クイックスタート
+
+> **CPU 要件:** CPU が **AVX** 命令をサポートしている必要があります。LanceDB のネイティブベクター検索は、一部の Linux x64 ビルドでは **AVX2** を必要とし、AVX のみの CPU では `SIGILL` でクラッシュする可能性があります。その場合は `retrieval.disableNativeCosine: true` を設定するか `MEMORY_LANCEDB_DISABLE_NATIVE_COSINE=1` を設定して、スコープ限定の行スキャンと JavaScript によるコサインランキングを使用してください。CPU フラグの確認は:`grep -o 'avx[^ ]*' /proc/cpuinfo | head -1`（出力がない = 非対応）。詳細は [#419](https://github.com/CortexReach/memory-lancedb-pro/issues/419) と [#644](https://github.com/CortexReach/memory-lancedb-pro/issues/644) を参照してください。
+
+### 1. 拡張機能をビルドする
 
 ```bash
-# local development
 git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
 cd TestForPi-memory-lancedb-pro && npm install && npm run build
-
-# load the extension in a pi session
-pi -e ./dist/pi-adapter/index.js
-# or register it in ~/.pi/agent/settings.json:
-#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
 ```
 
-### Configuration
+pi のエントリポイントは `dist/pi-adapter/index.js` です（`pi-adapter/index.ts` からコンパイルされます）。
 
-Create `~/.pi/agent/memory-lancedb-pro.json5` (shape identical to the OpenClaw plugin entry config):
+### 2. 拡張機能を登録する
+
+以下のいずれかを選択します:
+
+**A. pi の設定ファイル経由（グローバル、全プロジェクト）:**
+
+`~/.pi/agent/settings.json` に追加します:
+
+```json
+{
+  "extensions": [
+    "/absolute/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"
+  ]
+}
+```
+
+**B. pi のパッケージマネージャー経由:**
+
+```bash
+pi install /absolute/path/to/TestForPi-memory-lancedb-pro
+```
+
+**C. 1 セッションだけのクイックテスト:**
+
+```bash
+pi -e /absolute/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js
+```
+
+**D. 自動検出（設定変更不要）:** ビルド済みの拡張機能（または `pi.extensions` フィールドを持つ `package.json`）を `~/.pi/agent/extensions/`（グローバル）または `.pi/extensions/`（プロジェクトローカル）に置いて、pi を再起動します。
+
+### 3. 設定ファイルを作成する
+
+`~/.pi/agent/memory-lancedb-pro.json5` を作成します（`.json` も使用できます。または `$MEMORY_LANCEDB_PRO_CONFIG` で任意の場所を指定できます）:
 
 ```json5
 {
@@ -68,268 +130,654 @@ Create `~/.pi/agent/memory-lancedb-pro.json5` (shape identical to the OpenClaw p
 }
 ```
 
-### CLI
+> 設定ドキュメントの構造は上流の OpenClaw プラグインのエントリと同一です — 上記の裸の内部オブジェクトも、`{ "config": { ... } }` ラッパーも両方受け付けられます。
 
-```bash
-memory-pro list --scope global
-memory-pro search "query"
-memory-pro stats
+### 4. 動作確認
+
+pi セッションを開始し、起動ログを確認します:
+
+```
+memory-lancedb-pro: smart extraction enabled
+memory-lancedb-pro@...: plugin registered (db: /root/.pi-agent/memory/lancedb-pro, ...)
 ```
 
-### Tests
+次に、エージェントに記憶の保存と取得を依頼します:
 
-```bash
-npm test                       # full unit/e2e suite
-node scripts/run-ci-tests.mjs --all   # full CI manifest
-npm run test:pi-adapter        # pi adapter smoke test (mock pi API)
-```
+> **あなた:** 「覚えておいて:スペースよりタブの方が好き。」
+> **あなた:** 「私のインデントの好みは?」
 
-All upstream tests are preserved; `test/pi-adapter-smoke.test.mjs` and `test:pi-adapter` are new. The rest of this README documents the plugin itself and applies to both hosts.
+### なぜこのデフォルトなのか?
+
+- `autoCapture` + `smartExtraction` → エージェントがすべての会話から自動的に学習
+- `autoRecall` → 各応答の前に、関連する記憶が注入される
+- `extractMinMessages: 2` → 通常の 2 往復のチャットで抽出が発動
+- `sessionMemory.enabled: false` → 初日にセッション要約で検索結果を汚染しないようにする
 
 ---
 
-## なぜ memory-lancedb-pro なのか？
+## ⚠️ メモリ・アーキテクチャ（重要）
 
-ほとんどの AI エージェントは「記憶喪失」です——新しいチャットを始めるたびに、以前の会話内容はすべてリセットされます。
+この拡張機能は、1 つのメモリ能力を 2 つの連携するストアとして公開します:
 
-**memory-lancedb-pro** は OpenClaw 向けのプロダクショングレードの長期メモリプラグインです。エージェントを真の **AI メモリアシスタント** に変えます——重要な情報を自動的にキャプチャし、ノイズを自然に減衰させ、適切なタイミングで適切な記憶を呼び出します。手動タグ付けも複雑な設定も不要です。
+| メモリ層 | ストレージ | 用途 | 取得可能か? |
+|---|---|---|---|
+| **プラグインメモリ** | LanceDB（ベクターストア） | `memory_recall` / 自動リコールによる意味検索 | ✅ はい |
+| **正典コーパス (Canonical Corpus)** | `MEMORY.md`、`memory/**/*.md`、最近のセッショントランスクリプト、`memory/dreaming/**/*.md` | ソースオブトゥルースファイルと公開アーティファクト | ✅ `canonicalCorpus.enabled` が true のとき、LanceDB の意味インデックス経由 |
 
-### AI メモリアシスタントの実際の動作
+**重要な原則:**
+> 正典ファイルがソースオブトゥルースであり続けます。LanceDB は、それらをグラウンディングされたパス・行範囲・スニペット・引用付きで取得するための意味インデックスです。
 
-**メモリなし——毎回ゼロからスタート：**
+**あなたにとっての意味:**
+- 意味検索が必要? → `memory_store` を使うか、自動捕捉に任せる
+- `memory/YYYY-MM-DD.md` → 意味検索にもインデックス化できる **日誌 / ログ**として扱う
+- `MEMORY.md` → 正典コンテキストとしてインデックス化できる、キュレーションされた人間可読なリファレンス
+- `memory/dreaming/**/*.md` → 公開アーティファクトとして公開され、振り返りコンテキストとしてインデックス化されるドリームレポート
+- セッション JSONL トランスクリプト → `canonicalCorpus.includeSessionTranscripts` が有効な場合、`source: "sessions"` としてインデックス化
+- プラグインメモリ → 永続的な事実・好み・意思決定・自動捕捉された記憶の主要な書き込みパス
 
-> **あなた：** 「インデントはタブで、常にエラーハンドリングを追加して。」
-> *（次のセッション）*
-> **あなた：** 「前に言ったでしょ——タブであってスペースじゃない！」 😤
-> *（さらに次のセッション）*
-> **あなた：** 「……本当にもう3回目だよ、タブ。あとエラーハンドリングも。」
+### データの保存場所（pi）
 
-**memory-lancedb-pro あり——エージェントが学習し記憶する：**
-
-> **あなた：** 「インデントはタブで、常にエラーハンドリングを追加して。」
-> *（次のセッション——エージェントが自動的にあなたの好みを想起）*
-> **エージェント：** *（黙ってタブインデント＋エラーハンドリングを適用）* ✅
-> **あなた：** 「先月なぜ MongoDB ではなく PostgreSQL を選んだんだっけ？」
-> **エージェント：** 「2月12日の議論に基づくと、主な理由は……」 ✅
-
-これが **AI メモリアシスタント** の価値です——あなたのスタイルを学び、過去の意思決定を想起し、繰り返し説明することなくパーソナライズされた応答を提供します。
-
-### 他に何ができる？
-
-| | 得られるもの |
+| 対象 | パス |
 |---|---|
-| **自動キャプチャ** | エージェントが毎回の会話から学習——手動で `memory_store` を呼ぶ必要なし |
-| **スマート抽出** | LLM 駆動の6カテゴリ分類：プロフィール、好み、エンティティ、イベント、ケース、パターン |
-| **インテリジェント忘却** | Weibull 減衰モデル——重要な記憶は残り、ノイズは自然に消える |
-| **ハイブリッド検索** | ベクトル + BM25 全文検索、クロスエンコーダーリランキングで融合 |
-| **コンテキスト注入** | 関連する記憶が各応答前に自動的に浮上 |
-| **マルチスコープ分離** | エージェント別、ユーザー別、プロジェクト別のメモリ境界 |
-| **任意のプロバイダー** | OpenAI、Jina、Gemini、Ollama、または任意の OpenAI 互換 API |
-| **フルツールキット** | CLI、バックアップ、マイグレーション、アップグレード、エクスポート/インポート——本番運用対応 |
+| プラグインデータベース（LanceDB） | `~/.pi/agent/memory/lancedb-pro`（または `$MEMORY_LANCEDB_PRO_DB_PATH`） |
+| Markdown ミラー | `~/.pi/agent/memory/md-mirror`（または `$MEMORY_LANCEDB_PRO_MD_MIRROR_DIR`） |
+| セッショントランスクリプト | `~/.pi/agent/sessions/--<cwd>--/*.jsonl` |
+| グローバルスキル | `~/.pi/agent/skills` |
+
+ベースディレクトリは `~/.pi/agent` です。`PI_CODING_AGENT_DIR` または `PI_AGENT_DIR` で上書きできます。設定内の相対パス（`dbPath`、`mdMirrorDir` など）は pi のエージェントホームを基準に解決されます。
+
+### 設定ファイルの場所（優先順位）
+
+1. `$MEMORY_LANCEDB_PRO_CONFIG`（明示的なパス）
+2. `~/.pi/agent/memory-lancedb-pro.json5`
+3. `~/.pi/agent/memory-lancedb-pro.json`
+
+設定ファイルが見つからない場合、拡張機能は警告をログ出力して無効のままになります — 設定が壊れていても、存在しなくても、pi セッションが落ちることはありません。
 
 ---
 
-## クイックスタート
+## コア機能
 
-> **CPU 要件：** お使いの CPU が **AVX/AVX2** 命令セットに対応している必要があります（Intel Sandy Bridge 2011年以降 / AMD Bulldozer 2011年以降）。LanceDB のネイティブベクターエンジンはこれらを必要とします。非対応の CPU ではプラグインが `SIGILL`（不正命令）でクラッシュします。確認方法：`grep -o 'avx[^ ]*' /proc/cpuinfo | head -1`（出力なし = 非対応）。詳細は [#419](https://github.com/CortexReach/memory-lancedb-pro/issues/419) を参照。
+### ハイブリッド検索
 
-### 方法 A：ワンクリックインストールスクリプト（推奨）
-
-コミュニティが管理する **[セットアップスクリプト](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)** で、インストール・アップグレード・修復を1コマンドで実行：
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/CortexReach/toolbox/main/memory-lancedb-pro-setup/setup-memory.sh -o setup-memory.sh
-bash setup-memory.sh
+```
+Query → embedQuery() ─┐
+                       ├─→ Hybrid Fusion → Rerank → Lifecycle Decay Boost → Length Norm → Filter
+Query → BM25 FTS ─────┘
 ```
 
-> スクリプトがカバーするシナリオの完全なリストとその他のコミュニティツールは、以下の [エコシステム](#エコシステム) をご覧ください。
+- **ベクター検索** — LanceDB ANN（コサイン距離）による意味的な類似度
+- **BM25 全文検索** — LanceDB FTS インデックスによる正確なキーワード一致
+- **ハイブリッド融合** — ベクタースコアをベースに、BM25 ヒットに重み付きブースト（標準的な RRF ではなく、実世界のリコール品質向けにチューニング済み）
+- **設定可能な重み** — `vectorWeight`、`bm25Weight`、`minScore`
 
-### 方法 B：手動インストール
+### クロスエンコーダー再ランキング
 
-**OpenClaw CLI 経由（推奨）：**
-```bash
-openclaw plugins install memory-lancedb-pro@beta
-```
+- **Jina**、**SiliconFlow**、**Voyage AI**、**Pinecone** 向けのビルトインアダプタ
+- Jina 互換の任意のエンドポイント（例:Hugging Face TEI、DashScope）と互換
+- ハイブリッドスコアリング:クロスエンコーダー 60% + 元の融合スコア 40%
+- グレースフルなフォールバック:API 障害時はコサイン類似度にフォールバック
 
-**または npm 経由：**
-```bash
-npm i memory-lancedb-pro@beta
-```
-> npm を使用する場合、`openclaw.json` の `plugins.load.paths` にプラグインのインストールディレクトリの **絶対パス** を追加する必要があります。これが最も一般的なセットアップの問題です。
+### 多段階スコアリングパイプライン
 
-`openclaw.json` に以下を追加：
+| ステージ | 効果 |
+| --- | --- |
+| **ハイブリッド融合** | 意味的一致と完全一致のリコールを組み合わせる |
+| **クロスエンコーダー再ランキング** | 意味的に正確なヒットを引き上げる |
+| **ライフサイクル減衰ブースト** | Weibull 鮮度 + アクセス頻度 + 重要度 × 信頼度 |
+| **長さ正規化** | 長いエントリが支配しないようにする（アンカー:500 文字） |
+| **ハード最小スコア** | 無関係な結果を除去（デフォルト:0.35） |
+| **MMR 多様性** | コサイン類似度 > 0.85 → 降格 |
+
+### スマートメモリ抽出（v1.1.0）
+
+- **LLM による 6 カテゴリ抽出**:プロフィール、好み、エンティティ、イベント、事例、パターン
+- **L0/L1/L2 階層ストレージ**:L0（一言インデックス）→ L1（構造化要約）→ L2（完全な物語）
+- **2 段階の重複排除**:ベクター類似度プリフィルタ（≥0.7）→ LLM による意味的判断（CREATE/MERGE/SKIP）
+- **カテゴリ対応マージ**:`profile` は常にマージ、`events`/`cases` は追記のみ
+
+### メモリライフサイクル管理（v1.1.0）
+
+- **Weibull 減衰エンジン**:複合スコア = 再近性 + 頻度 + 本質的価値
+- **3 段階プロモーション**:`Peripheral ↔ Working ↔ Core`（しきい値は設定可能）
+- **アクセス強化**:頻繁に取得される記憶ほど減衰が遅い（間隔反復方式）
+- **重要度変調半減期**:重要な記憶ほど減衰が遅い
+
+### マルチスコープ分離
+
+- ビルトインスコープ:`global`、`agent:<id>`、`custom:<name>`、`project:<id>`、`user:<id>`
+- `scopes.agentAccess` によるエージェントレベルのアクセス制御
+- デフォルト:各エージェントは `global` + 自分自身の `agent:<id>` スコープにアクセス
+- `memory_recall`、`memory_search`、`memory_list`、`memory_debug` などの読み取り専用ツールは、要求されたスコープにアクセスできない場合にソフトフォールします:呼び出し元がアクセス可能なスコープを検索し、details に `ignoredScope` と `accessibleScopes` を返します。書き込み・変更ツールは、アクセスできないスコープに対して `scope_access_denied` を返します。
+
+### 自動捕捉 & 自動リコール
+
+- **自動捕捉**（`agent_end`）:会話から好み・事実・決定・エンティティを抽出し、重複排除して、1 ターンにつき最大 3 件保存
+- **自動リコール**（各プロンプト構築前）:`<relevant-memories>` コンテキストを注入（最大 3 エントリ）
+
+> **注記:** pi では、これらの OpenClaw フック（`agent_end`、`before_prompt_build` など）は、pi のライフサイクルイベント（`agent_end`、`input`、`session_start`、`session_shutdown`、`tool_result`、`session_before_switch`、`session_before_fork`）から `pi-adapter/shim.ts` によってマッピングされます。
+
+### ノイズフィルタリング & 適応的検索
+
+- 低品質コンテンツをフィルタリング:エージェントの拒否、メタ質問、挨拶
+- 挨拶、スラッシュコマンド、単純な確認、絵文字では検索をスキップ
+- メモリキーワード（"remember"、"previously"、"last time"）では検索を強制
+- CJK 対応のしきい値（中国語:6 文字 vs 英語:15 文字）
+
+---
+
+<details>
+<summary><strong>ビルトイン <code>memory-lancedb</code> との比較（クリックして展開）</strong></summary>
+
+| 機能 | ビルトイン `memory-lancedb` | **memory-lancedb-pro** |
+| --- | :---: | :---: |
+| ベクター検索 | はい | はい |
+| BM25 全文検索 | - | はい |
+| ハイブリッド融合（ベクター + BM25） | - | はい |
+| クロスエンコーダー再ランキング（マルチプロバイダー） | - | はい |
+| 再近性ブースト & 時間減衰 | - | はい |
+| 長さ正規化 | - | はい |
+| MMR 多様性 | - | はい |
+| マルチスコープ分離 | - | はい |
+| ノイズフィルタリング | - | はい |
+| 適応的検索 | - | はい |
+| 管理 CLI | - | はい |
+| セッションメモリ | - | はい |
+| タスク対応埋め込み | - | はい |
+| **LLM スマート抽出（6 カテゴリ）** | - | はい（v1.1.0） |
+| **Weibull 減衰 + 階層プロモーション** | - | はい（v1.1.0） |
+| OpenAI 互換の埋め込み | 制限あり | はい |
+
+</details>
+
+---
+
+## 設定
+
+すべての設定は `~/.pi/agent/memory-lancedb-pro.json5`（または `$MEMORY_LANCEDB_PRO_CONFIG`）にあります。
+
+API キーフィールド（`embedding.apiKey`、`retrieval.rerankApiKey`、`llm.apiKey`）は、プレーン文字列、`${ENV_VAR}` プレースホルダー、または SecretRef オブジェクトを受け付けます。このプラグインは `env` と `file` の SecretRef ソースをサポートしています:
 
 ```json
 {
-  "plugins": {
-    "slots": { "memory": "memory-lancedb-pro" },
-    "entries": {
-      "memory-lancedb-pro": {
-        "enabled": true,
-        "config": {
-          "embedding": {
-            "provider": "openai-compatible",
-            "apiKey": "${OPENAI_API_KEY}",
-            "model": "text-embedding-3-small"
-          },
-          "autoCapture": true,
-          "autoRecall": true,
-          "smartExtraction": true,
-          "extractMinMessages": 2,
-          "extractMaxChars": 8000,
-          "sessionMemory": { "enabled": false }
-        }
-      }
-    }
+  "embedding": {
+    "apiKey": { "source": "env", "id": "JINA_API_KEY" }
+  },
+  "retrieval": {
+    "rerankApiKey": { "source": "file", "id": "~/.pi/agent/secrets/jina-rerank" }
   }
 }
 ```
 
-**これらのデフォルト値の理由：**
-- `autoCapture` + `smartExtraction` → エージェントが毎回の会話から自動的に学習
-- `autoRecall` → 関連する記憶が各応答前に自動注入
-- `extractMinMessages: 2` → 通常の2ターン会話で抽出がトリガー
-- `sessionMemory.enabled: false` → 初期段階でセッション要約が検索結果を汚染するのを回避
-
-検証と再起動：
-
-```bash
-openclaw config validate
-openclaw gateway restart
-openclaw logs --follow --plain | grep "memory-lancedb-pro"
-```
-
-以下が表示されるはずです：
-- `memory-lancedb-pro: smart extraction enabled`
-- `memory-lancedb-pro@...: plugin registered`
-
-完了！あなたのエージェントは長期メモリを持つようになりました。
+`source: "file"` の場合、`id` は pi のエージェントホームを基準に解決され、UTF-8 ファイルとして読み込まれます。オプションの `provider` フィールドは SecretRef オブジェクト形状の互換性のために受け付けられますが、プロバイダーディスパッチには使用されません。`exec` およびその他の SecretRef ソースは、ランタイムの設定検証で拒否されます。
 
 <details>
-<summary><strong>その他のインストール方法（既存ユーザー、アップグレード）</strong></summary>
+<summary><strong>完全な設定例</strong></summary>
 
-**既に OpenClaw を使用中？**
-
-1. `plugins.load.paths` にプラグインの **絶対パス** を追加
-2. メモリスロットをバインド：`plugins.slots.memory = "memory-lancedb-pro"`
-3. 検証：`openclaw plugins info memory-lancedb-pro && openclaw memory-pro stats`
-
-**v1.1.0 以前からのアップグレード？**
-
-```bash
-# 1) バックアップ
-openclaw memory-pro export --scope global --output memories-backup.json
-# 2) ドライラン
-openclaw memory-pro upgrade --dry-run
-# 3) アップグレード実行
-openclaw memory-pro upgrade
-# 4) 検証
-openclaw memory-pro stats
+```json5
+{
+  embedding: {
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024,
+    taskQuery: "retrieval.query",
+    taskPassage: "retrieval.passage",
+    normalized: true,
+    maxInputChars: 1400,
+    clientTimeoutMs: 30000
+  },
+  dbPath: "~/.pi/agent/memory/lancedb-pro",
+  autoCapture: true,
+  autoRecall: true,
+  retrieval: {
+    mode: "hybrid",
+    vectorWeight: 0.7,
+    bm25Weight: 0.3,
+    minScore: 0.3,
+    rerank: "cross-encoder",
+    rerankApiKey: "${JINA_API_KEY}",
+    rerankModel: "jina-reranker-v3",
+    rerankEndpoint: "https://api.jina.ai/v1/rerank",
+    rerankProvider: "jina",
+    candidatePoolSize: 20,
+    recencyHalfLifeDays: 14,
+    recencyWeight: 0.1,
+    filterNoise: true,
+    disableNativeCosine: false,
+    lengthNormAnchor: 500,
+    hardMinScore: 0.35,
+    timeDecayHalfLifeDays: 60,
+    reinforcementFactor: 0.5,
+    maxHalfLifeMultiplier: 3
+  },
+  enableManagementTools: false,
+  scopes: {
+    default: "global",
+    definitions: {
+      global: { description: "Shared knowledge" },
+      "agent:main": { description: "Main agent private" }
+    },
+    agentAccess: {
+      main: ["global", "agent:main"]
+    }
+  },
+  sessionStrategy: "none",
+  sessionMemory: {
+    enabled: false,
+    messageCount: 15
+  },
+  smartExtraction: true,
+  llm: {
+    apiKey: "${OPENAI_API_KEY}",
+    model: "gpt-4o-mini",
+    baseURL: "https://api.openai.com/v1"
+  },
+  extractMinMessages: 2,
+  extractMaxChars: 8000
+}
 ```
-
-動作変更とアップグレードの詳細は `CHANGELOG-v1.1.0.md` を参照してください。
 
 </details>
 
 <details>
-<summary><strong>Telegram Bot クイックインポート（クリックで展開）</strong></summary>
+<summary><strong>埋め込みプロバイダー</strong></summary>
 
-OpenClaw の Telegram 連携を使用している場合、設定ファイルを手動で編集するより、メイン Bot にインポートコマンドを直接送信するのが最も簡単です。
+**OpenAI 互換の埋め込み API**で動作します。Jina や Voyage などのサービス向けのプロバイダー固有のペイロードアダプタも含まれます:
 
-以下のメッセージを送信してください：
+| プロバイダー | モデル | ベース URL | 次元数 |
+| --- | --- | --- | --- |
+| **Jina**（推奨） | `jina-embeddings-v5-text-small` | `https://api.jina.ai/v1` | 1024 |
+| **OpenAI** | `text-embedding-3-small` | `https://api.openai.com/v1` | 1536 |
+| **Voyage** | `voyage-4-lite` / `voyage-4` | `https://api.voyageai.com/v1` | 1024 / 1024 |
+| **Google Gemini** | `gemini-embedding-001` | `https://generativelanguage.googleapis.com/v1beta/openai/` | 3072 |
+| **Ollama**（ローカル） | `nomic-embed-text` | `http://localhost:11434/v1` | プロバイダー依存 |
 
-```text
-Help me connect this memory plugin with the most user-friendly configuration: https://github.com/CortexReach/memory-lancedb-pro
+Voyage の埋め込みリクエストは、Voyage の `model` + `input` ペイロード形状を使用します。`requestDimensions` が設定されている場合、`output_dimension` として送信されます。`encoding_format` などの OpenAI 専用フィールドは省略されます。
 
-Requirements:
-1. Set it as the only active memory plugin
-2. Use Jina for embedding, and set embedding.taskQuery=retrieval.query and embedding.taskPassage=retrieval.passage
-3. Use Jina for reranker
-4. Use gpt-4o-mini for the smart-extraction LLM
-5. Enable autoCapture, autoRecall, smartExtraction
-6. extractMinMessages=2
-7. sessionMemory.enabled=false
-8. captureAssistant=false
-9. retrieval mode=hybrid, vectorWeight=0.7, bm25Weight=0.3
-10. rerank=cross-encoder, candidatePoolSize=12, minScore=0.6, hardMinScore=0.62
-11. Generate the final openclaw.json config directly, not just an explanation
+コンテキストまたはバッチ制限が小さいローカル埋め込みサーバーの場合は、`embedding.maxInputChars` を設定してください。プラグインは `nomic-embed-text` に控えめなデフォルトを適用します。自動チャンキングが有効な場合、長いドキュメントは各プロバイダーリクエストにキャップが適用される前に分割されます。
+
+</details>
+
+<details>
+<summary><strong>再ランキングプロバイダー</strong></summary>
+
+クロスエンコーダー再ランキングは、`rerankProvider` で複数のプロバイダーをサポートします:
+
+| プロバイダー | `rerankProvider` | モデル例 |
+| --- | --- | --- |
+| **Jina**（デフォルト） | `jina` | `jina-reranker-v3` |
+| **SiliconFlow**（無料枠あり） | `siliconflow` | `BAAI/bge-reranker-v2-m3` |
+| **Voyage AI** | `voyage` | `rerank-2.5` |
+| **Pinecone** | `pinecone` | `bge-reranker-v2-m3` |
+
+Jina 互換の再ランキングエンドポイントならどれでも動作します — `rerankProvider: "jina"` を設定し、`rerankEndpoint` を自分のサービス（例:Hugging Face TEI、DashScope `qwen3-rerank`）に指定してください。
+
+</details>
+
+<details>
+<summary><strong>スマート抽出（LLM）— v1.1.0</strong></summary>
+
+`smartExtraction` が有効（デフォルト:`true`）の場合、プラグインは正規表現ベースのトリガーではなく、LLM を使って記憶をインテリジェントに抽出・分類します。
+
+| フィールド | 型 | デフォルト | 説明 |
+|-------|------|---------|-------------|
+| `smartExtraction` | boolean | `true` | LLM による 6 カテゴリ抽出の有効/無効 |
+| `llm.auth` | string | `api-key` | `api-key` は `llm.apiKey` / `embedding.apiKey` を使用。`oauth` はデフォルトでプラグインスコープの OAuth トークンファイルを使用 |
+| `llm.apiKey` | string | *（`embedding.apiKey` にフォールバック）* | LLM プロバイダーの API キー |
+| `llm.model` | string | `openai/gpt-oss-120b` | LLM モデル名 |
+| `llm.baseURL` | string | *（`embedding.baseURL` にフォールバック）* | LLM API エンドポイント |
+| `llm.oauthProvider` | string | `openai-codex` | `llm.auth` が `oauth` の場合に使用される OAuth プロバイダー ID |
+| `llm.oauthPath` | string | `~/.pi/agent/.memory-lancedb-pro/oauth.json` | `llm.auth` が `oauth` の場合に使用される OAuth トークンファイル |
+| `llm.timeoutMs` | number | `30000` | LLM リクエストのタイムアウト（ミリ秒） |
+| `extractMinMessages` | number | `2` | 抽出が発動するまでの最小メッセージ数 |
+| `extractMaxChars` | number | `8000` | LLM に送信する最大文字数 |
+
+OAuth `llm` 設定（LLM 呼び出しに既存の Codex / ChatGPT ログインキャッシュを使用）:
+
+> **注記:** OAuth フローは上流の OpenClaw プラグインから継承されています。pi では、`memory-pro auth login` が同じ OAuth ロジックを呼び出します。トークンファイルのデフォルトは `~/.pi/agent/.memory-lancedb-pro/oauth.json` です。
+
+```json5
+{
+  llm: {
+    auth: "oauth",
+    oauthProvider: "openai-codex",
+    model: "gpt-5.4",
+    oauthPath: "${HOME}/.pi/agent/.memory-lancedb-pro/oauth.json",
+    timeoutMs: 30000
+  }
+}
 ```
+
+`llm.auth: "oauth"` の注意点:
+
+- `llm.oauthProvider` は現在 `openai-codex` です。
+- OAuth トークンはデフォルトで `~/.pi/agent/.memory-lancedb-pro/oauth.json` に保存されます。
+- そのファイルを別の場所に保存したい場合は `llm.oauthPath` を設定できます。
+- `auth login` は、それまでの api-key の `llm` 設定を OAuth ファイルの隣にスナップショットし、`auth logout` は、スナップショットが存在する場合はその設定を復元します。
+- `api-key` から `oauth` への切り替えでは、`llm.baseURL` は自動的に引き継がれません。カスタムの ChatGPT/Codex 互換バックエンドを意図的に使いたい場合のみ、OAuth モードで手動で設定してください。
+
+</details>
+
+<details>
+<summary><strong>レガシー CPU フォールバック</strong></summary>
+
+AVX のみの Linux x64 ホストが LanceDB ネイティブベクター検索内で `SIGILL` によりクラッシュする場合、ネイティブコサインを無効にして、スコープ内の行をスキャンし、JavaScript でランキングするようにします:
+
+```json5
+{
+  retrieval: {
+    disableNativeCosine: true
+  }
+}
+```
+
+同じ動作のために `MEMORY_LANCEDB_DISABLE_NATIVE_COSINE=1` を設定することもできます。
+
+</details>
+
+<details>
+<summary><strong>ライフサイクル設定（減衰 + 階層）</strong></summary>
+
+| フィールド | デフォルト | 説明 |
+|-------|---------|-------------|
+| `decay.recencyHalfLifeDays` | `30` | Weibull 再近性減衰の基本半減期 |
+| `decay.frequencyWeight` | `0.3` | 複合スコアにおけるアクセス頻度の重み |
+| `decay.intrinsicWeight` | `0.3` | `importance × confidence` の重み |
+| `decay.betaCore` | `0.8` | `core` 記憶の Weibull ベータ |
+| `decay.betaWorking` | `1.0` | `working` 記憶の Weibull ベータ |
+| `decay.betaPeripheral` | `1.3` | `peripheral` 記憶の Weibull ベータ |
+| `tier.coreAccessThreshold` | `10` | `core` に昇格するまでの最小リコール回数 |
+| `tier.peripheralAgeDays` | `60` | 古い記憶を降格させる年齢しきい値 |
+
+</details>
+
+<details>
+<summary><strong>アクセス強化</strong></summary>
+
+頻繁に取得される記憶は、減衰が遅くなります（間隔反復方式）。
+
+設定キー（`retrieval` 配下）:
+- `reinforcementFactor`（0〜2、デフォルト:`0.5`）— `0` にすると無効
+- `maxHalfLifeMultiplier`（1〜10、デフォルト:`3`）— 実効半減期の上限
 
 </details>
 
 ---
 
-## エコシステム
+## CLI コマンド
 
-memory-lancedb-pro はコアプラグインです。コミュニティがセットアップと日常利用をさらにスムーズにするツールを構築しています：
-
-### セットアップスクリプト——ワンクリックでインストール・アップグレード・修復
-
-> **[CortexReach/toolbox/memory-lancedb-pro-setup](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)**
-
-単なるインストーラーではありません——さまざまな実際のシナリオをインテリジェントに処理します：
-
-| あなたの状況 | スクリプトの動作 |
-|---|---|
-| 未インストール | 新規ダウンロード → 依存関係インストール → 設定選択 → openclaw.json に書き込み → 再起動 |
-| `git clone` でインストール済み、古いコミットで停滞 | 自動で `git fetch` + `checkout` を最新版に → 依存関係再インストール → 検証 |
-| 設定に無効なフィールドがある | スキーマフィルターで自動検出し、サポートされていないフィールドを除去 |
-| `npm` でインストール済み | git 更新をスキップし、`npm update` の実行を促す |
-| 無効な設定で `openclaw` CLI が壊れている | フォールバック：`openclaw.json` ファイルからワークスペースパスを直接読み取り |
-| `plugins/` ではなく `extensions/` | 設定またはファイルシステムからプラグインの場所を自動検出 |
-| 既に最新版 | ヘルスチェックのみ実行、変更なし |
+`npm run build` の後に、`memory-pro` バイナリが利用可能になります:
 
 ```bash
-bash setup-memory.sh                    # インストールまたはアップグレード
-bash setup-memory.sh --dry-run          # プレビューのみ
-bash setup-memory.sh --beta             # プレリリース版を含む
-bash setup-memory.sh --uninstall        # 設定を元に戻しプラグインを削除
+npm link   # once, to expose the "memory-pro" bin globally
+memory-pro list [--scope global] [--category fact] [--limit 20] [--json]
+memory-pro search "query" [--scope global] [--limit 10] [--json]
+memory-pro stats [--scope global] [--json]
+memory-pro auth login [--provider openai-codex] [--model gpt-5.4] [--oauth-path /abs/path/oauth.json]
+memory-pro auth status
+memory-pro auth logout
+memory-pro delete <id>
+memory-pro delete-bulk --scope global [--before 2025-01-01] [--dry-run]
+memory-pro export [--scope global] [--output memories.json]
+memory-pro import memories.json [--scope global] [--dry-run]
+memory-pro reembed --source-db /path/to/old-db [--batch-size 32] [--skip-existing]
+memory-pro upgrade [--dry-run] [--batch-size 10] [--no-llm] [--limit N] [--scope SCOPE]
+memory-pro migrate check|run|verify [--source /path]
 ```
 
-内蔵プロバイダープリセット：**Jina / DashScope / SiliconFlow / OpenAI / Ollama**、または任意の OpenAI 互換 API を利用可能。完全な使用方法（`--ref`、`--selfcheck-only` など）は [セットアップスクリプト README](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup) を参照してください。
+pi セッション内では、同じ管理面が **`/memory-pro`** スラッシュコマンドとして利用できます。
 
-### Claude Code / OpenClaw Skill——AI ガイド付き設定
+> CLI は拡張機能と同じ設定ファイルを読み込みます（`$MEMORY_LANCEDB_PRO_CONFIG` → `~/.pi/agent/memory-lancedb-pro.json5` → `~/.pi/agent/memory-lancedb-pro.json`）。
 
-> **[CortexReach/memory-lancedb-pro-skill](https://github.com/CortexReach/memory-lancedb-pro-skill)**
+OAuth ログインフロー:
 
-この Skill をインストールすると、AI エージェント（Claude Code または OpenClaw）が memory-lancedb-pro のすべての機能を深く理解できるようになります。**「最適な設定を有効にして」** と言うだけで：
-
-- **7ステップのガイド付き設定ワークフロー**、4つのデプロイプランを提供：
-  - フルパワー版（Jina + OpenAI）/ コスト削減版（無料の SiliconFlow リランカー）/ シンプル版（OpenAI のみ）/ 完全ローカル版（Ollama、API コストゼロ）
-- **全9つの MCP ツール** の正しい使い方：`memory_recall`、`memory_store`、`memory_forget`、`memory_update`、`memory_stats`、`memory_list`、`self_improvement_log`、`self_improvement_extract_skill`、`self_improvement_review` *（フルツールセットには `enableManagementTools: true` が必要——デフォルトのクイックスタート設定では4つのコアツールのみ公開）*
-- **よくある落とし穴の回避**：ワークスペースプラグインの有効化、`autoRecall` のデフォルト false、jiti キャッシュ、環境変数、スコープ分離など
-
-**Claude Code へのインストール：**
-```bash
-git clone https://github.com/CortexReach/memory-lancedb-pro-skill.git ~/.claude/skills/memory-lancedb-pro
-```
-
-**OpenClaw へのインストール：**
-```bash
-git clone https://github.com/CortexReach/memory-lancedb-pro-skill.git ~/.openclaw/workspace/skills/memory-lancedb-pro-skill
-```
+1. `memory-pro auth login` を実行します
+2. 対話型ターミナルで `--provider` を省略した場合、ブラウザを開く前に OAuth プロバイダーピッカーが表示されます
+3. コマンドは認証 URL を出力し、`--no-browser` が設定されていない限りブラウザを開きます
+4. コールバックが成功すると、コマンドはプラグインの OAuth ファイル（デフォルト:`~/.pi/agent/.memory-lancedb-pro/oauth.json`）を保存し、ログアウト用にそれまでの api-key `llm` 設定をスナップショットし、プラグインの `llm` 設定を OAuth 設定（`auth`、`oauthProvider`、`model`、`oauthPath`）で置き換えます
+5. `memory-pro auth logout` は、その OAuth ファイルを削除し、スナップショットが存在する場合はそれまでの api-key `llm` 設定を復元します
 
 ---
 
-## 動画チュートリアル
+## 高度なトピック
 
-> フルウォークスルー：インストール、設定、ハイブリッド検索の内部構造。
+<details>
+<summary><strong>以前のポートバージョンからのアップグレード</strong></summary>
 
-[![YouTube Video](https://img.shields.io/badge/YouTube-Watch%20Now-red?style=for-the-badge&logo=youtube)](https://youtu.be/MtukF1C8epQ)
-**https://youtu.be/MtukF1C8epQ**
+```bash
+# 1) Backup
+memory-pro export --scope global --output memories-backup.json
+# 2) Dry run
+memory-pro upgrade --dry-run
+# 3) Run upgrade
+memory-pro upgrade
+# 4) Verify
+memory-pro stats
+```
 
-[![Bilibili Video](https://img.shields.io/badge/Bilibili-Watch%20Now-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1zUf2BGEgn/)
-**https://www.bilibili.com/video/BV1zUf2BGEgn/**
+動作の変更点とアップグレードの根拠は `CHANGELOG-v1.1.0.md` を参照してください。
+
+**既存のデータベースで Jina のタスクヒントを有効にする場合?**
+
+タスクヒントは `embedding` ブロック内の 2 つの設定キーです:
+
+```json5
+{
+  embedding: {
+    model: "jina-embeddings-v5-text-small",
+    taskQuery: "retrieval.query",
+    taskPassage: "retrieval.passage"
+  }
+}
+```
+
+これらは、設定した*後*に書き込まれたベクターにのみ影響します。ストア内の既存の行はタスクヒントなしで埋め込まれているため、`retrieval.query` で埋め込んだクエリは、別のベクター空間に存在するパッセージと比較されることになります — 効果は静かに半分程度になります。
+
+既存の行を修正するには、**新しいデータベースに再埋め込みして乗り換えてください**。その場での再埋め込みは**しないでください**:`reembed` は各行を `table.add()`（置き換えではなく ID による追加）で書き込むため、その場での実行（まさに `--force` が可能にするもの）では、古いベクターが新しいベクターの隣に残り、**すべての行が倍増**します。再試行するとさらに重なります。そのため `reembed` は、強制しない限り同じパスへの実行を拒否します。
+
+```bash
+# 0) Make sure no pi session is writing mid-migration.
+
+# 1) Back up the whole store — a real filesystem copy of the LanceDB directory.
+#    (Do NOT rely on `memory-pro export`: it defaults to --limit 1000 and a single
+#    --scope, so it silently drops rows past 1000 and every non-global scope.)
+cp -r <your dbPath> <your dbPath>.bak
+
+# 2) In the config file, set the task hints AND point `dbPath` at a new, empty
+#    target (e.g. "<your dbPath>-v2"). A fresh target is also what lets you change
+#    `embedding.dimensions`: a new vector width can only go into a new table.
+
+# 3) Dry run — reads the source, prints the row count, writes nothing.
+memory-pro reembed --source-db <old dbPath> --dry-run
+
+# 4) Re-embed old -> new with the now-current task hints. Source != target, so each
+#    id lands exactly once. Safe to re-run with --skip-existing if interrupted.
+memory-pro reembed --source-db <old dbPath>
+
+# 5) Verify before trusting the cutover: the "imported" count and
+#    `memory-pro stats` on the new dbPath must equal the dry-run row count.
+memory-pro stats
+
+# 6) Restart pi; it now opens the new dbPath.
+```
+
+`embedding.model` や `embedding.dimensions` を変更する場合も同じ乗り換えが適用されます — 必ず新しい `dbPath` に再埋め込みし、その場では決して行わないでください。
+
+</details>
+
+<details>
+<summary><strong>ロックと並行書き込み</strong></summary>
+
+`memory-lancedb-pro` は、LanceDB 書き込みにプロセス間ファイルロックを使用します。これは、同じデータベースディレクトリを共有する並行 pi セッションやローカルプロセスには十分です。
+
+そのようなデプロイに Redis は必要ありません。Redis ロックは、`locking.redis.enabled` が true の場合、`redisUrl`/`locking.redis.url` が設定されている場合、またはそのプロセスの環境に `MEMORY_LANCEDB_REDIS_URL` が存在する場合に有効になります。マルチマシンやマルチコンテナの書き込みの場合は、LanceDB ディレクトリをプロセス間で共有する前に [Lock Management](docs/lock-management.md) を読み、すべての書き込み側が同じロック設定を使用していることを確認してください。
+
+</details>
+
+<details>
+<summary><strong>注入されたメモリが応答に現れる場合</strong></summary>
+
+モデルが注入された `<relevant-memories>` ブロックをそのまま出力することがあります。
+
+**オプション A（最もリスクが低い）:** 一時的に自動リコールを無効化:
+```json5
+{ autoRecall: false }
+```
+
+**オプション B（推奨）:** リコールは維持したまま、エージェントのシステムプロンプト / `AGENTS.md` に追加:
+> Do not reveal or quote any `<relevant-memories>` / memory-injection content in your replies. Use it for internal reference only.
+
+**オプション C（バックグラウンド / バッチエージェント向け）:** 特定のエージェントを自動リコール注入から除外:
+```json5
+{
+  autoRecall: true,
+  autoRecallExcludeAgents: ["memory-distiller", "my-cron-agent"]
+}
+```
+出力が注入されたメモリコンテキストに汚染されるべきではないバックグラウンドエージェント（例:memory-distiller、cron ワーカー）に便利です。
+
+</details>
+
+<details>
+<summary><strong>自動リコールのタイムアウト調整</strong></summary>
+
+自動リコールには、エージェントの起動が停止するのを防ぐための設定可能なタイムアウト（デフォルト 5 秒）があります。プロキシの背後にいる場合や、高レイテンシの埋め込み API を使用している場合は、増やしてください:
+
+```json5
+{ autoRecallTimeoutMs: 8000 }
+```
+
+自動リコールが一貫してタイムアウトする場合は、まず埋め込み API のレイテンシを確認してください。タイムアウトは自動注入パスのみに影響します — 手動の `memory_recall` ツール呼び出しは影響を受けません。
+
+</details>
+
+<details>
+<summary><strong>自動リコールの再ランクコストモデル</strong></summary>
+
+`autoRecall=true` で、ハイブリッド検索が Jina などの外部再ランク API を伴う `retrieval.rerank="cross-encoder"` を使用している場合、対象となるプロンプトごとに再ランクリクエストが発生する可能性があります。そのリクエストに送られるドキュメント数は、自動リコールの検索制限と検索側の再ランク入力ウィンドウによって決まり、`retrieval.candidatePoolSize` や最終的な `autoRecallMaxItems` 注入上限によって直接決まるわけではありません。
+
+例えば、`autoRecallMaxItems: 3` の場合、自動リコールは検索に 6 アイテムを要求し、ハイブリッド検索は外部再ランカーに最大 12 件の候補を送ってから、最大 3 件のメモリを注入する可能性があります。外部再ランクの使用量を減らすには、`autoRecallMaxItems` や `maxRecallPerTurn` を下げるか、`retrieval.rerank` を `"lightweight"` や `"none"` に切り替えるか、`autoRecallMinLength` を増やすか、自動リコールを無効のままにして、適切な場面で手動の `memory_recall` を使用してください。
+
+起動ログは、自動リコールとハイブリッドクロスエンコーダー再ランクが、注入する量よりも多くのアイテムを再ランカーに送る可能性がある場合に警告します。自動リコールのデバッグ統計には、実際の `rerankInput`、`rerankInputLimit`、`retrieveLimit`、`rerank`、`rerankProvider`、設定済みの `retrievalCandidatePoolSize` が含まれます。
+
+</details>
+
+<details>
+<summary><strong>セッションメモリ</strong></summary>
+
+- 新規セッションイベントで発動 — 前のセッションの要約を LanceDB に保存
+- デフォルトで無効（pi は既に `.jsonl` セッショントランスクリプトを永続化しているため）
+- メッセージ数は設定可能（デフォルト:15）
+
+</details>
+
+<details>
+<summary><strong>カスタムスラッシュコマンド（例:/lesson）</strong></summary>
+
+`AGENTS.md` またはシステムプロンプトに追加します:
+
+```markdown
+## /lesson command
+When the user sends `/lesson <content>`:
+1. Use memory_store to save as category=fact (raw knowledge)
+2. Use memory_store to save as category=decision (actionable takeaway)
+3. Confirm what was saved
+
+## /remember command
+When the user sends `/remember <content>`:
+1. Use memory_store to save with appropriate category and importance
+2. Confirm with the stored memory ID
+```
+
+</details>
+
+<details>
+<summary><strong>AI エージェントのための鉄則</strong></summary>
+
+> 下のブロックを `AGENTS.md` にコピーすると、エージェントが自動的にこれらのルールを適用します。
+
+```markdown
+## Rule 1 — Dual-layer memory storage
+Every pitfall/lesson learned → IMMEDIATELY store TWO memories:
+- Technical layer: Pitfall: [symptom]. Cause: [root cause]. Fix: [solution]. Prevention: [how to avoid]
+  (category: fact, importance >= 0.8)
+- Principle layer: Decision principle ([tag]): [behavioral rule]. Trigger: [when]. Action: [what to do]
+  (category: decision, importance >= 0.85)
+
+## Rule 2 — LanceDB hygiene
+Entries must be short and atomic (< 500 chars). No raw conversation summaries or duplicates.
+
+## Rule 3 — Recall before retry
+On ANY tool failure, ALWAYS memory_recall with relevant keywords BEFORE retrying.
+
+## Rule 4 — Confirm target codebase
+Confirm you are editing memory-lancedb-pro vs built-in memory-lancedb before changes.
+
+## Rule 5 — Clear jiti cache after extension code changes
+After modifying .ts files under the extension, MUST run rm -rf /tmp/jiti/ BEFORE restarting pi.
+```
+
+</details>
+
+<details>
+<summary><strong>データベーススキーマ</strong></summary>
+
+LanceDB テーブル `memories`:
+
+| フィールド | 型 | 説明 |
+| --- | --- | --- |
+| `id` | string (UUID) | 主キー |
+| `text` | string | メモリテキスト（FTS インデックス付き） |
+| `vector` | float[] | 埋め込みベクター |
+| `category` | string | 保存カテゴリ:`preference` / `fact` / `decision` / `entity` / `reflection` / `other` |
+| `scope` | string | スコープ識別子（例:`global`、`agent:main`） |
+| `importance` | float | 重要度スコア 0〜1 |
+| `timestamp` | int64 | 作成タイムスタンプ（ms） |
+| `metadata` | string (JSON) | 拡張メタデータ |
+
+v1.1.0 の一般的な `metadata` キー:`l0_abstract`、`l1_overview`、`l2_content`、`memory_category`、`tier`、`access_count`、`confidence`、`last_accessed_at`
+
+> **カテゴリに関する注記:** トップレベルの `category` フィールドは 6 つの保存カテゴリを使用します。スマート抽出の 6 カテゴリの意味ラベル（`profile` / `preferences` / `entities` / `events` / `cases` / `patterns`）は、`metadata.memory_category` に保存されます。
+
+</details>
+
+<details>
+<summary><strong>トラブルシューティング</strong></summary>
+
+**拡張機能が読み込まれない / "no config file found"**
+
+`~/.pi/agent/memory-lancedb-pro.json5` を作成するか、`$MEMORY_LANCEDB_PRO_CONFIG` を設定してください。拡張機能は期待される形状を警告として出力し、無効のままになります — pi は動き続けます。
+
+**スマート抽出の初期化に失敗**
+
+`llm.apiKey` / `${ENV_VAR}` が設定されているか確認してください。プラグインは失敗するのではなく、正規表現による抽出にフォールバックします。
+
+**"Cannot mix BigInt and other types"（LanceDB / Apache Arrow）**
+
+LanceDB 0.26+ では、一部の数値列が `BigInt` として返される場合があります。**memory-lancedb-pro >= 1.0.14** にアップグレードしてください — このプラグインは現在、算術の前に `Number(...)` で値を強制変換します。
+
+</details>
 
 ---
 
 ## アーキテクチャ
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                   index.ts（エントリポイント）              │
-│  プラグイン登録 · 設定解析 · ライフサイクルフック              │
-└────────┬──────────┬──────────┬──────────┬───────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│        pi-adapter/index.ts (Pi entry point)                 │
+│  config file → shim (pi events → OpenClaw hooks) → register │
+└────────┬────────────────────────────────────────────────────┘
+         │  pi-adapter/shim.ts adapts:
+         │    pi.on(event)        → api.on / api.registerHook
+         │    pi.registerTool     → api.registerTool
+         │    pi.registerCommand  → api.registerCli (/memory-pro)
+         │    pi CLI subprocess   → api.runtime.agent.runEmbeddedPiAgent
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   index.ts (Plugin Core, unchanged)         │
+│  Plugin Registration · Config Parsing · Lifecycle Hooks     │
+└────────┬──────────┬──────────┬──────────┬───────────────────┘
          │          │          │          │
     ┌────▼───┐ ┌────▼───┐ ┌───▼────┐ ┌──▼──────────┐
     │ store  │ │embedder│ │retriever│ │   scopes    │
@@ -343,432 +791,92 @@ git clone https://github.com/CortexReach/memory-lancedb-pro-skill.git ~/.opencla
                          └────────────────┘
     ┌─────────────┐   ┌──────────┐
     │  tools.ts   │   │  cli.ts  │
-    │(エージェントAPI)│   │ (CLI)    │
+    │ (Agent API) │   │ (CLI)    │
     └─────────────┘   └──────────┘
 ```
 
-> 完全なアーキテクチャの詳細は [docs/memory_architecture_analysis.md](docs/memory_architecture_analysis.md) を参照してください。
+> 完全なアーキテクチャの詳細は、[docs/memory_architecture_analysis.md](docs/memory_architecture_analysis.md) を参照してください。
 
 <details>
-<summary><strong>ファイルリファレンス（クリックで展開）</strong></summary>
+<summary><strong>ファイルリファレンス（クリックして展開）</strong></summary>
 
-| ファイル | 用途 |
+| ファイル | 目的 |
 | --- | --- |
-| `index.ts` | プラグインエントリポイント。OpenClaw Plugin API に登録、設定解析、ライフサイクルフックのマウント |
-| `openclaw.plugin.json` | プラグインメタデータ + 完全な JSON Schema 設定宣言 |
-| `cli.ts` | CLI コマンド：`memory-pro list/search/stats/delete/delete-bulk/export/import/reembed/upgrade/migrate` |
-| `src/store.ts` | LanceDB ストレージレイヤー。テーブル作成 / FTS インデックス / ベクトル検索 / BM25 検索 / CRUD |
-| `src/embedder.ts` | Embedding 抽象レイヤー。任意の OpenAI 互換 API プロバイダーに対応 |
-| `src/retriever.ts` | ハイブリッド検索エンジン。ベクトル + BM25 → ハイブリッド融合 → リランク → ライフサイクル減衰 → フィルタ |
-| `src/scopes.ts` | マルチスコープアクセス制御 |
-| `src/tools.ts` | エージェントツール定義：`memory_recall`、`memory_store`、`memory_forget`、`memory_update` + 管理ツール |
-| `src/noise-filter.ts` | エージェントの拒否応答、メタ質問、挨拶などの低品質コンテンツをフィルタリング |
+| `pi-adapter/index.ts` | pi エントリポイント:設定ファイルの読み込み、OpenClaw API シムの構築、プラグインコアの登録 |
+| `pi-adapter/shim.ts` | pi のライフサイクルイベント / ツール / コマンドを OpenClaw プラグイン API にマッピング |
+| `pi-adapter/config.ts` | 設定ファイルの読み込み（`$MEMORY_LANCEDB_PRO_CONFIG` → `~/.pi/agent/memory-lancedb-pro.json5` → `.json`） |
+| `pi-adapter/paths.ts` | pi のパス解決（`~/.pi/agent`、環境変数による上書き） |
+| `pi-adapter/pi-runner.ts` | `pi --mode json --no-tools ...` による組み込みサブエージェントランナー |
+| `pi-adapter/cli-main.ts` | スタンドアロンの `memory-pro` CLI エントリ |
+| `index.ts` | プラグインコアエントリ:設定解析、ライフサイクルフック、メモリ能力の登録 |
+| `src/store.ts` | LanceDB ストレージ層。テーブル作成 / FTS インデックス / ベクター検索 / BM25 検索 / CRUD |
+| `src/embedder.ts` | 埋め込み抽象化。任意の OpenAI 互換 API プロバイダーに対応 |
+| `src/retriever.ts` | ハイブリッド検索エンジン。ベクター + BM25 → ハイブリッド融合 → 再ランク → ライフサイクル減衰 → フィルタ |
+| `src/scopes.ts` | マルチスコープのアクセス制御 |
+| `src/tools.ts` | エージェントツール定義:`memory_recall`、`memory_store`、`memory_forget`、`memory_update` + 管理ツール |
+| `src/noise-filter.ts` | エージェントの拒否、メタ質問、挨拶、低品質コンテンツをフィルタリング |
 | `src/adaptive-retrieval.ts` | クエリがメモリ検索を必要とするかどうかを判定 |
-| `src/migrate.ts` | 内蔵 `memory-lancedb` から Pro へのマイグレーション |
-| `src/smart-extractor.ts` | LLM 駆動の6カテゴリ抽出、L0/L1/L2 階層ストレージと2段階重複排除対応 |
-| `src/decay-engine.ts` | Weibull 伸長指数関数減衰モデル |
-| `src/tier-manager.ts` | 3段階昇格/降格：周辺 ↔ ワーキング ↔ コア |
+| `src/migrate.ts` | ビルトイン `memory-lancedb` から Pro へのマイグレーション |
+| `src/smart-extractor.ts` | L0/L1/L2 階層ストレージと 2 段階の重複排除を備えた LLM による 6 カテゴリ抽出 |
+| `src/decay-engine.ts` | Weibull 伸長指数減衰モデル |
+| `src/tier-manager.ts` | 3 段階の昇格/降格:Peripheral ↔ Working ↔ Core |
 
 </details>
 
 ---
 
-## コア機能
+## OpenClaw Upstream Appendix
 
-### ハイブリッド検索
+このリポジトリはポートです。上流プロジェクトは **[CortexReach/memory-lancedb-pro](https://github.com/CortexReach/memory-lancedb-pro)** — OpenClaw プラグインです。以下は上流の OpenClaw での利用方法を説明しています。pi ユーザーには必要ありません。
 
+### 変更点（ポート差分）
+
+| 領域 | OpenClaw（上流） | Pi（本ポート） |
+|---|---|---|
+| 拡張機能の起動 | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → コンパイル済み `dist/pi-adapter/index.js`、`package.json` の `pi.extensions` で宣言 |
+| 設定ファイル | `openclaw.json` のプラグインエントリ | `~/.pi/agent/memory-lancedb-pro.json5`（または `$MEMORY_LANCEDB_PRO_CONFIG`）— 同じドキュメント構造 |
+| データ & セッションのベースディレクトリ | `~/.openclaw/...` | `~/.pi/agent/...`（`PI_CODING_AGENT_DIR` / `PI_AGENT_DIR` で上書き可能） |
+| CLI | `openclaw memory-pro …` | スタンドアロンバイナリ:`memory-pro …`（`pi-adapter/cli-main.ts` からコンパイル） |
+| スラッシュコマンド | `openclaw` 登録の CLI | シム経由の `pi.registerCommand("/memory-pro", ...)` |
+| 組み込みサブエージェントランナー | OpenClaw ランタイム API | `pi --mode json --no-tools …` へのシェルアウト（`pi-adapter/pi-runner.ts`） |
+| セッション構成 | `~/.openclaw/agents/<id>/sessions/*.jsonl` | `~/.pi/agent/sessions/--<cwd>--/*.jsonl` |
+| バージョン | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+ライフサイクルイベントは、pi のイベントから `pi-adapter/shim.ts` を介して OpenClaw フックにマッピングされます:`input`、`session_start`、`before_agent_start`、`agent_end`、`session_shutdown`、`tool_result`、`session_before_switch`、`session_before_fork`。プラグインのツール（`memory_store`、`memory_recall` など）と `/memory-pro` スラッシュコマンドは、シムを通じて無変更で登録されます。
+
+### 上流のクイックスタート（OpenClaw のみ）
+
+```bash
+# via OpenClaw CLI (recommended)
+openclaw plugins install memory-lancedb-pro@beta
+
+# or via npm
+npm i memory-lancedb-pro@beta
+# then add the plugin's install directory as an absolute path in plugins.load.paths
 ```
-クエリ → embedQuery() ─┐
-                        ├─→ ハイブリッド融合 → リランク → ライフサイクル減衰ブースト → 長さ正規化 → フィルタ
-クエリ → BM25 全文 ─────┘
-```
-
-- **ベクトル検索** — LanceDB ANN によるセマンティック類似度（コサイン距離）
-- **BM25 全文検索** — LanceDB FTS インデックスによる正確なキーワードマッチング
-- **ハイブリッド融合** — ベクトルスコアをベースに、BM25 ヒットに重み付きブーストを適用（標準 RRF ではなく、実際の再現率品質に最適化）
-- **設定可能な重み** — `vectorWeight`、`bm25Weight`、`minScore`
-
-### クロスエンコーダーリランキング
-
-- **Jina**、**SiliconFlow**、**Voyage AI**、**Pinecone** の組み込みアダプター
-- 任意の Jina 互換エンドポイント（例：Hugging Face TEI、DashScope）に対応
-- ハイブリッドスコアリング：60% クロスエンコーダー + 40% 元の融合スコア
-- グレースフルデグラデーション：API 失敗時にコサイン類似度にフォールバック
-
-### マルチステージスコアリングパイプライン
-
-| ステージ | 効果 |
-| --- | --- |
-| **ハイブリッド融合** | セマンティック検索と完全一致検索を統合 |
-| **クロスエンコーダーリランク** | セマンティックに正確なヒットを上位に昇格 |
-| **ライフサイクル減衰ブースト** | Weibull 鮮度 + アクセス頻度 + 重要度 × 信頼度 |
-| **長さ正規化** | 長いエントリが結果を支配するのを防止（アンカー：500文字） |
-| **ハード最低スコア** | 無関係な結果を除去（デフォルト：0.35） |
-| **MMR 多様性** | コサイン類似度 > 0.85 → 降格 |
-
-### スマートメモリ抽出（v1.1.0）
-
-- **LLM 駆動の6カテゴリ抽出**：プロフィール、好み、エンティティ、イベント、ケース、パターン
-- **L0/L1/L2 階層ストレージ**：L0（一文の索引）→ L1（構造化サマリー）→ L2（完全な記述）
-- **2段階重複排除**：ベクトル類似度プレフィルタ（≥0.7）→ LLM セマンティック判定（CREATE/MERGE/SKIP）
-- **カテゴリ対応マージ**：`profile` は常にマージ、`events`/`cases` は追記のみ
-
-### メモリライフサイクル管理（v1.1.0）
-
-- **Weibull 減衰エンジン**：複合スコア = 鮮度 + 頻度 + 内在的価値
-- **3段階昇格**：`周辺 ↔ ワーキング ↔ コア`、閾値は設定可能
-- **アクセス強化**：頻繁に想起される記憶はより遅く減衰（間隔反復スタイル）
-- **重要度変調半減期**：重要な記憶はより遅く減衰
-
-### マルチスコープ分離
-
-- 組み込みスコープ：`global`、`agent:<id>`、`custom:<name>`、`project:<id>`、`user:<id>`
-- `scopes.agentAccess` によるエージェントレベルのアクセス制御
-- デフォルト：各エージェントが `global` + 自身の `agent:<id>` スコープにアクセス
-
-### 自動キャプチャ＆自動想起
-
-- **自動キャプチャ**（`agent_end`）：会話から好み/事実/決定/エンティティを抽出、重複排除後、1ターンあたり最大3件を保存
-- **自動想起**（`before_agent_start`）：`<relevant-memories>` コンテキストを注入（最大3件）
-
-### ノイズフィルタリング＆アダプティブ検索
-
-- 低品質コンテンツをフィルタリング：エージェントの拒否応答、メタ質問、挨拶
-- 検索をスキップ：挨拶、スラッシュコマンド、簡単な確認、絵文字
-- 強制検索：メモリキーワード（「覚えている」「以前」「前回」）
-- CJK 対応の閾値（中国語：6文字、英語：15文字）
-
----
-
-<details>
-<summary><strong>内蔵 <code>memory-lancedb</code> との比較（クリックで展開）</strong></summary>
-
-| 機能 | 内蔵 `memory-lancedb` | **memory-lancedb-pro** |
-| --- | :---: | :---: |
-| ベクトル検索 | あり | あり |
-| BM25 全文検索 | - | あり |
-| ハイブリッド融合（ベクトル + BM25） | - | あり |
-| クロスエンコーダーリランク（マルチプロバイダー） | - | あり |
-| 鮮度ブースト＆時間減衰 | - | あり |
-| 長さ正規化 | - | あり |
-| MMR 多様性 | - | あり |
-| マルチスコープ分離 | - | あり |
-| ノイズフィルタリング | - | あり |
-| アダプティブ検索 | - | あり |
-| 管理 CLI | - | あり |
-| セッションメモリ | - | あり |
-| タスク対応 Embedding | - | あり |
-| **LLM スマート抽出（6カテゴリ）** | - | あり（v1.1.0） |
-| **Weibull 減衰 + 階層昇格** | - | あり（v1.1.0） |
-| 任意の OpenAI 互換 Embedding | 限定的 | あり |
-
-</details>
-
----
-
-## 設定
-
-<details>
-<summary><strong>完全な設定例</strong></summary>
 
 ```json
 {
-  "embedding": {
-    "apiKey": "${JINA_API_KEY}",
-    "model": "jina-embeddings-v5-text-small",
-    "baseURL": "https://api.jina.ai/v1",
-    "dimensions": 1024,
-    "taskQuery": "retrieval.query",
-    "taskPassage": "retrieval.passage",
-    "normalized": true
-  },
-  "dbPath": "~/.openclaw/memory/lancedb-pro",
-  "autoCapture": true,
-  "autoRecall": true,
-  "retrieval": {
-    "mode": "hybrid",
-    "vectorWeight": 0.7,
-    "bm25Weight": 0.3,
-    "minScore": 0.3,
-    "rerank": "cross-encoder",
-    "rerankApiKey": "${JINA_API_KEY}",
-    "rerankModel": "jina-reranker-v3",
-    "rerankEndpoint": "https://api.jina.ai/v1/rerank",
-    "rerankProvider": "jina",
-    "candidatePoolSize": 20,
-    "recencyHalfLifeDays": 14,
-    "recencyWeight": 0.1,
-    "filterNoise": true,
-    "lengthNormAnchor": 500,
-    "hardMinScore": 0.35,
-    "timeDecayHalfLifeDays": 60,
-    "reinforcementFactor": 0.5,
-    "maxHalfLifeMultiplier": 3
-  },
-  "enableManagementTools": false,
-  "scopes": {
-    "default": "global",
-    "definitions": {
-      "global": { "description": "Shared knowledge" },
-      "agent:discord-bot": { "description": "Discord bot private" }
-    },
-    "agentAccess": {
-      "discord-bot": ["global", "agent:discord-bot"]
+  "plugins": {
+    "slots": { "memory": "memory-lancedb-pro" },
+    "entries": {
+      "memory-lancedb-pro": {
+        "enabled": true,
+        "config": { "autoCapture": true, "autoRecall": true, "smartExtraction": true }
+      }
     }
-  },
-  "sessionMemory": {
-    "enabled": false,
-    "messageCount": 15
-  },
-  "smartExtraction": true,
-  "llm": {
-    "apiKey": "${OPENAI_API_KEY}",
-    "model": "gpt-4o-mini",
-    "baseURL": "https://api.openai.com/v1"
-  },
-  "extractMinMessages": 2,
-  "extractMaxChars": 8000
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Embedding プロバイダー</strong></summary>
-
-**任意の OpenAI 互換 Embedding API** で動作：
-
-| プロバイダー | モデル | Base URL | 次元数 |
-| --- | --- | --- | --- |
-| **Jina**（推奨） | `jina-embeddings-v5-text-small` | `https://api.jina.ai/v1` | 1024 |
-| **OpenAI** | `text-embedding-3-small` | `https://api.openai.com/v1` | 1536 |
-| **Voyage** | `voyage-4-lite` / `voyage-4` | `https://api.voyageai.com/v1` | 1024 / 1024 |
-| **Google Gemini** | `gemini-embedding-001` | `https://generativelanguage.googleapis.com/v1beta/openai/` | 3072 |
-| **Ollama**（ローカル） | `nomic-embed-text` | `http://localhost:11434/v1` | プロバイダー依存 |
-
-</details>
-
-<details>
-<summary><strong>リランクプロバイダー</strong></summary>
-
-クロスエンコーダーリランキングは `rerankProvider` で複数のプロバイダーをサポート：
-
-| プロバイダー | `rerankProvider` | モデル例 |
-| --- | --- | --- |
-| **Jina**（デフォルト） | `jina` | `jina-reranker-v3` |
-| **SiliconFlow**（無料枠あり） | `siliconflow` | `BAAI/bge-reranker-v2-m3` |
-| **Voyage AI** | `voyage` | `rerank-2.5` |
-| **Pinecone** | `pinecone` | `bge-reranker-v2-m3` |
-
-任意の Jina 互換リランクエンドポイントも使用可能——`rerankProvider: "jina"` を設定し、`rerankEndpoint` をあなたのサービスに向けてください（例：Hugging Face TEI、DashScope `qwen3-rerank`）。
-
-</details>
-
-<details>
-<summary><strong>スマート抽出（LLM）— v1.1.0</strong></summary>
-
-`smartExtraction` が有効（デフォルト：`true`）の場合、プラグインは正規表現ベースのトリガーの代わりに LLM を使用してインテリジェントにメモリを抽出・分類します。
-
-| フィールド | 型 | デフォルト | 説明 |
-|-------|------|---------|-------------|
-| `smartExtraction` | boolean | `true` | LLM 駆動の6カテゴリ抽出の有効化/無効化 |
-| `llm.auth` | string | `api-key` | `api-key` は `llm.apiKey` / `embedding.apiKey` を使用；`oauth` はデフォルトでプラグインスコープの OAuth トークンファイルを使用 |
-| `llm.apiKey` | string | *（`embedding.apiKey` にフォールバック）* | LLM プロバイダーの API キー |
-| `llm.model` | string | `openai/gpt-oss-120b` | LLM モデル名 |
-| `llm.baseURL` | string | *（`embedding.baseURL` にフォールバック）* | LLM API エンドポイント |
-| `llm.oauthProvider` | string | `openai-codex` | `llm.auth` が `oauth` の場合に使用する OAuth プロバイダー ID |
-| `llm.oauthPath` | string | `~/.openclaw/.memory-lancedb-pro/oauth.json` | `llm.auth` が `oauth` の場合に使用する OAuth トークンファイル |
-| `llm.timeoutMs` | number | `30000` | LLM リクエストタイムアウト（ミリ秒） |
-| `extractMinMessages` | number | `2` | 抽出がトリガーされる最小メッセージ数 |
-| `extractMaxChars` | number | `8000` | LLM に送信される最大文字数 |
-
-
-OAuth `llm` 設定（既存の Codex / ChatGPT ログインキャッシュを使用して LLM 呼び出しを行う）：
-```json
-{
-  "llm": {
-    "auth": "oauth",
-    "oauthProvider": "openai-codex",
-    "model": "gpt-5.4",
-    "oauthPath": "${HOME}/.openclaw/.memory-lancedb-pro/oauth.json",
-    "timeoutMs": 30000
   }
 }
 ```
 
-`llm.auth: "oauth"` に関する注意点：
+上流のコマンドは `openclaw memory-pro ...` プレフィックスを使用します。完全な OpenClaw ドキュメントは[上流の README](https://github.com/CortexReach/memory-lancedb-pro) を参照してください。
 
-- `llm.oauthProvider` は現在 `openai-codex` です。
-- OAuth トークンのデフォルト保存先は `~/.openclaw/.memory-lancedb-pro/oauth.json` です。
-- 別の場所に保存したい場合は `llm.oauthPath` を設定してください。
-- `auth login` は OAuth ファイルの隣に以前の api-key モードの `llm` 設定のスナップショットを保存し、`auth logout` は利用可能な場合にそのスナップショットを復元します。
-- `api-key` から `oauth` への切り替え時、`llm.baseURL` は自動的に引き継がれません。意図的にカスタム ChatGPT/Codex 互換バックエンドを使用する場合のみ、OAuth モードで手動設定してください。
+### 上流のエコシステム
 
-</details>
-
-<details>
-<summary><strong>ライフサイクル設定（減衰 + 階層）</strong></summary>
-
-| フィールド | デフォルト | 説明 |
-|-------|---------|-------------|
-| `decay.recencyHalfLifeDays` | `30` | Weibull 鮮度減衰のベース半減期 |
-| `decay.frequencyWeight` | `0.3` | 複合スコアにおけるアクセス頻度の重み |
-| `decay.intrinsicWeight` | `0.3` | `重要度 × 信頼度` の重み |
-| `decay.betaCore` | `0.8` | `コア` メモリの Weibull ベータ |
-| `decay.betaWorking` | `1.0` | `ワーキング` メモリの Weibull ベータ |
-| `decay.betaPeripheral` | `1.3` | `周辺` メモリの Weibull ベータ |
-| `tier.coreAccessThreshold` | `10` | `コア` に昇格するために必要な最小想起回数 |
-| `tier.peripheralAgeDays` | `60` | 古いメモリを降格するための日数閾値 |
-
-</details>
-
-<details>
-<summary><strong>アクセス強化</strong></summary>
-
-頻繁に想起されるメモリはより遅く減衰します（間隔反復スタイル）。
-
-設定キー（`retrieval` 内）：
-- `reinforcementFactor`（0-2、デフォルト：`0.5`）— `0` に設定すると無効化
-- `maxHalfLifeMultiplier`（1-10、デフォルト：`3`）— 実効半減期のハードキャップ
-
-</details>
-
----
-
-## CLI コマンド
-
-```bash
-openclaw memory-pro list [--scope global] [--category fact] [--limit 20] [--json]
-openclaw memory-pro search "クエリ" [--scope global] [--limit 10] [--json]
-openclaw memory-pro stats [--scope global] [--json]
-openclaw memory-pro auth login [--provider openai-codex] [--model gpt-5.4] [--oauth-path /abs/path/oauth.json]
-openclaw memory-pro auth status
-openclaw memory-pro auth logout
-openclaw memory-pro delete <id>
-openclaw memory-pro delete-bulk --scope global [--before 2025-01-01] [--dry-run]
-openclaw memory-pro export [--scope global] [--output memories.json]
-openclaw memory-pro import memories.json [--scope global] [--dry-run]
-openclaw memory-pro reembed --source-db /path/to/old-db [--batch-size 32] [--skip-existing]
-openclaw memory-pro upgrade [--dry-run] [--batch-size 10] [--no-llm] [--limit N] [--scope SCOPE]
-openclaw memory-pro migrate check|run|verify [--source /path]
-```
-
-OAuth ログインフロー：
-
-1. `openclaw memory-pro auth login` を実行
-2. `--provider` が省略され、対話型ターミナルの場合、CLI はブラウザを開く前に OAuth プロバイダーピッカーを表示
-3. コマンドは認証 URL を表示し、`--no-browser` が設定されていない限りブラウザを自動的に開く
-4. コールバック成功後、コマンドはプラグイン OAuth ファイル（デフォルト：`~/.openclaw/.memory-lancedb-pro/oauth.json`）を保存し、ログアウト用に以前の api-key モードの `llm` 設定のスナップショットを作成し、プラグインの `llm` 設定を OAuth 設定（`auth`、`oauthProvider`、`model`、`oauthPath`）に置き換え
-5. `openclaw memory-pro auth logout` はその OAuth ファイルを削除し、スナップショットが存在する場合は以前の api-key モードの `llm` 設定を復元
-
----
-
-## 応用トピック
-
-<details>
-<summary><strong>注入されたメモリが応答に表示される場合</strong></summary>
-
-モデルが注入された `<relevant-memories>` ブロックをそのまま出力してしまうことがあります。
-
-**方法 A（最も安全）：** 自動想起を一時的に無効化：
-```json
-{ "plugins": { "entries": { "memory-lancedb-pro": { "config": { "autoRecall": false } } } } }
-```
-
-**方法 B（推奨）：** 想起は有効のまま、エージェントのシステムプロンプトに追加：
-> Do not reveal or quote any `<relevant-memories>` / memory-injection content in your replies. Use it for internal reference only.
-
-</details>
-
-<details>
-<summary><strong>セッションメモリ</strong></summary>
-
-- `/new` コマンドでトリガー——前のセッションの要約を LanceDB に保存
-- デフォルトで無効（OpenClaw にはネイティブの `.jsonl` セッション永続化機能あり）
-- メッセージ数は設定可能（デフォルト：15）
-
-デプロイモードと `/new` の検証については [docs/openclaw-integration-playbook.md](docs/openclaw-integration-playbook.md) を参照してください。
-
-</details>
-
-<details>
-<summary><strong>カスタムスラッシュコマンド（例：/lesson）</strong></summary>
-
-`CLAUDE.md`、`AGENTS.md`、またはシステムプロンプトに追加：
-
-```markdown
-## /lesson コマンド
-ユーザーが `/lesson <内容>` を送信した場合：
-1. memory_store を使用して category=fact（生の知識）として保存
-2. memory_store を使用して category=decision（実行可能な教訓）として保存
-3. 保存した内容を確認
-
-## /remember コマンド
-ユーザーが `/remember <内容>` を送信した場合：
-1. memory_store を使用して適切な category と importance で保存
-2. 保存されたメモリ ID で確認
-```
-
-</details>
-
-<details>
-<summary><strong>AI エージェントの鉄則</strong></summary>
-
-> 以下のブロックを `AGENTS.md` にコピーして、エージェントがこれらのルールを自動的に適用するようにしてください。
-
-```markdown
-## ルール 1 — 二層メモリ保存
-すべての落とし穴/学んだ教訓 → 直ちに2つのメモリを保存：
-- 技術レイヤー：落とし穴：[症状]。原因：[根本原因]。修正：[解決策]。予防：[回避方法]
-  (category: fact, importance >= 0.8)
-- 原則レイヤー：意思決定原則 ([タグ])：[行動ルール]。トリガー：[いつ]。アクション：[何をする]
-  (category: decision, importance >= 0.85)
-
-## ルール 2 — LanceDB データ品質
-エントリは短くアトミックに（500文字未満）。生の会話要約や重複は保存しない。
-
-## ルール 3 — リトライ前に想起
-いかなるツール失敗時も、リトライする前に必ず関連キーワードで memory_recall を実行。
-
-## ルール 4 — 対象コードベースの確認
-変更前に、操作対象が memory-lancedb-pro なのか内蔵 memory-lancedb なのかを確認。
-
-## ルール 5 — プラグインコード変更後に jiti キャッシュをクリア
-plugins/ 配下の .ts ファイルを変更した後、openclaw gateway restart の前に必ず rm -rf /tmp/jiti/ を実行。
-```
-
-</details>
-
-<details>
-<summary><strong>データベーススキーマ</strong></summary>
-
-LanceDB テーブル `memories`：
-
-| フィールド | 型 | 説明 |
-| --- | --- | --- |
-| `id` | string (UUID) | 主キー |
-| `text` | string | メモリテキスト（FTS インデックス付き） |
-| `vector` | float[] | Embedding ベクトル |
-| `category` | string | ストレージカテゴリ：`preference` / `fact` / `decision` / `entity` / `reflection` / `other` |
-| `scope` | string | スコープ識別子（例：`global`、`agent:main`） |
-| `importance` | float | 重要度スコア 0-1 |
-| `timestamp` | int64 | 作成タイムスタンプ（ミリ秒） |
-| `metadata` | string (JSON) | 拡張メタデータ |
-
-v1.1.0 の一般的な `metadata` キー：`l0_abstract`、`l1_overview`、`l2_content`、`memory_category`、`tier`、`access_count`、`confidence`、`last_accessed_at`
-
-> **カテゴリに関する注意：** トップレベルの `category` フィールドは6つのストレージカテゴリを使用します。スマート抽出の6カテゴリセマンティックラベル（`profile` / `preferences` / `entities` / `events` / `cases` / `patterns`）は `metadata.memory_category` に保存されます。
-
-</details>
-
-<details>
-<summary><strong>トラブルシューティング</strong></summary>
-
-### "Cannot mix BigInt and other types"（LanceDB / Apache Arrow）
-
-LanceDB 0.26+ では、一部の数値カラムが `BigInt` として返されることがあります。**memory-lancedb-pro >= 1.0.14** にアップグレードしてください——プラグインは算術演算の前に `Number(...)` で値を変換するようになっています。
-
-</details>
+- **[セットアップスクリプト](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)** — OpenClaw デプロイのワンクリックインストール/アップグレード/修復（`openclaw.json` を書き込みます）
+- **[AI ガイド付き設定スキル](https://github.com/CortexReach/memory-lancedb-pro-skill)** — Claude Code / OpenClaw エージェント向け
+- **ビデオチュートリアル** — [YouTube](https://youtu.be/MtukF1C8epQ) · [Bilibili](https://www.bilibili.com/video/BV1zUf2BGEgn/)
+- **スター履歴** — [star-history.com](https://star-history.com/#CortexReach/memory-lancedb-pro&Date)
 
 ---
 
@@ -776,38 +884,51 @@ LanceDB 0.26+ では、一部の数値カラムが `BigInt` として返され�
 
 | ドキュメント | 説明 |
 | --- | --- |
-| [OpenClaw 統合プレイブック](docs/openclaw-integration-playbook.md) | デプロイモード、検証、リグレッションマトリックス |
-| [メモリアーキテクチャ分析](docs/memory_architecture_analysis.md) | 完全なアーキテクチャ詳細解説 |
-| [CHANGELOG v1.1.0](docs/CHANGELOG-v1.1.0.md) | v1.1.0 の動作変更とアップグレード根拠 |
-| [ロングコンテキストチャンキング](docs/long-context-chunking.md) | 長文ドキュメントのチャンキング戦略 |
+| [Memory Architecture Analysis](docs/memory_architecture_analysis.md) | 完全なアーキテクチャの詳細解説 |
+| [CHANGELOG v1.1.0](docs/CHANGELOG-v1.1.0.md) | v1.1.0 の動作変更とアップグレードの根拠 |
+| [Release Checklist](docs/release-checklist.md) | パッケージの事前チェック、公開ドライラン、公開後のスモークチェック |
+| [Long-Context Chunking](docs/long-context-chunking.md) | 長文ドキュメントのチャンキング戦略 |
+| [Lock Management](docs/lock-management.md) | 複数ライターのロック（Redis）の詳細 |
+
+## テスト
+
+```bash
+npm test                       # full unit/e2e suite
+node scripts/run-ci-tests.mjs --all   # full CI manifest
+npm run test:pi-adapter        # pi adapter smoke test (mock pi API)
+```
+
+上流のテストはすべて維持されています。`test/pi-adapter-smoke.test.mjs` と `test:pi-adapter` が新規です。
 
 ---
 
-## Beta：スマートメモリ v1.1.0
+## ベータ版:Smart Memory v1.1.0
 
-> ステータス：Beta——`npm i memory-lancedb-pro@beta` でインストール可能。`latest` を使用している安定版ユーザーには影響しません。
+> ステータス:ベータ版 — `npm i memory-lancedb-pro@beta` で利用可能です。`latest` の安定版ユーザーには影響ありません。
 
 | 機能 | 説明 |
 |---------|-------------|
-| **スマート抽出** | LLM 駆動の6カテゴリ抽出、L0/L1/L2 メタデータ対応。無効時は正規表現にフォールバック。 |
-| **ライフサイクルスコアリング** | Weibull 減衰を検索に統合——高頻度・高重要度のメモリが上位にランク。 |
-| **階層管理** | 3段階システム（コア → ワーキング → 周辺）、自動昇格/降格。 |
+| **スマート抽出** | L0/L1/L2 メタデータを備えた LLM による 6 カテゴリ抽出。無効時は正規表現にフォールバック。 |
+| **ライフサイクルスコアリング** | 検索に統合された Weibull 減衰 — 高頻度・高重要度の記憶が上位にランク付けされます。 |
+| **階層管理** | 3 段階システム（Core → Working → Peripheral）と自動昇格/降格。 |
 
-フィードバック：[GitHub Issues](https://github.com/CortexReach/memory-lancedb-pro/issues) · 元に戻す：`npm i memory-lancedb-pro@latest`
+フィードバック:[GitHub Issues](https://github.com/CortexReach/memory-lancedb-pro/issues) · 戻す場合:`npm i memory-lancedb-pro@latest`
 
 ---
 
 ## 依存関係
 
-| パッケージ | 用途 |
+| パッケージ | 目的 |
 | --- | --- |
-| `@lancedb/lancedb` ≥0.26.2 | ベクトルデータベース（ANN + FTS） |
-| `openai` ≥6.21.0 | OpenAI 互換 Embedding API クライアント |
-| `@sinclair/typebox` 0.34.48 | JSON Schema 型定義 |
+| `@lancedb/lancedb` ≥0.26.2 | ベクターデータベース（ANN + FTS） |
+| `openai` ≥6.21.0 | OpenAI 互換埋め込み API クライアント |
+| `@sinclair/typebox` 0.34.48 | JSON スキーマ型定義 |
 
 ---
 
 ## コントリビューター
+
+上流のメンテナーとコントリビューター（[完全なリスト](https://github.com/CortexReach/memory-lancedb-pro/graphs/contributors) を参照）:
 
 <p>
 <a href="https://github.com/win4r"><img src="https://avatars.githubusercontent.com/u/42172631?v=4" width="48" height="48" alt="@win4r" /></a>
@@ -821,24 +942,6 @@ LanceDB 0.26+ では、一部の数値カラムが `BigInt` として返され�
 <a href="https://github.com/chenjiyong"><img src="https://avatars.githubusercontent.com/u/8199522?v=4" width="48" height="48" alt="@chenjiyong" /></a>
 </p>
 
-全リスト：[Contributors](https://github.com/CortexReach/memory-lancedb-pro/graphs/contributors)
-
-## Star 履歴
-
-<a href="https://star-history.com/#CortexReach/memory-lancedb-pro&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&theme=dark&transparent=true" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&transparent=true" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&transparent=true" />
-  </picture>
-</a>
-
-## ライセンス
+## License
 
 MIT
-
----
-
-## WeChat QR コード
-
-<img src="https://github.com/win4r/AISuperDomain/assets/42172631/7568cf78-c8ba-4182-aa96-d524d903f2bc" width="214.8" height="291">

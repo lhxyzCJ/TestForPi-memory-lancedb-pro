@@ -1,15 +1,15 @@
 <div align="center">
 
-# 🧠 memory-lancedb-pro · 🦞OpenClaw Plugin
+# 🧠 memory-lancedb-pro · π Pi Coding Agent Extension
 
-**Assistente Memoria IA per Agenti [OpenClaw](https://github.com/openclaw/openclaw)**
+**Assistente di memoria AI per l'[agente di coding pi](https://github.com/earendil-works/pi)**
 
-*Dai al tuo agente IA un cervello che ricorda davvero — tra sessioni, tra agenti, nel tempo.*
+*Dai al tuo agente AI un cervello che si ricorda davvero — tra sessioni, tra progetti, attraverso il tempo.*
 
-Un plugin di memoria a lungo termine per OpenClaw basato su LanceDB che memorizza preferenze, decisioni e contesto di progetto, e li richiama automaticamente nelle sessioni future.
+Un'estensione di memoria basata su LanceDB per pi che memorizza preferenze, decisioni e contesto di progetto, richiamandole automaticamente nelle sessioni future.
 
-[![OpenClaw Plugin](https://img.shields.io/badge/OpenClaw-Plugin-blue)](https://github.com/openclaw/openclaw)
-[![npm version](https://img.shields.io/npm/v/memory-lancedb-pro)](https://www.npmjs.com/package/memory-lancedb-pro)
+[![Pi Extension](https://img.shields.io/badge/Pi-Extension-blue)](https://github.com/earendil-works/pi)
+[![Pi 0.80+](https://img.shields.io/badge/pi-0.80%2B-brightgreen)](https://github.com/earendil-works/pi)
 [![LanceDB](https://img.shields.io/badge/LanceDB-Vectorstore-orange)](https://lancedb.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -19,39 +19,101 @@ Un plugin di memoria a lungo termine per OpenClaw basato su LanceDB che memorizz
 
 ---
 
-## 🤖 Pi Coding Agent Port
+## 🤖 Informazioni su questo port
 
-This fork ports the OpenClaw plugin to the **[pi coding agent](https://github.com/earendil-works/pi)** (pi ≥ 0.80) with minimal changes: the entire OpenClaw plugin core is untouched and loads unchanged through a thin adapter (`pi-adapter/`).
+Questo repository è un **port dell'agente di coding pi** del plugin di memoria di livello produttivo [memory-lancedb-pro](https://github.com/CortexReach/memory-lancedb-pro) (MIT). L'intero nucleo del plugin OpenClaw è intatto e viene caricato senza modifiche tramite un sottile adapter (`pi-adapter/`), quindi pi (≥ 0.80) ottiene lo stesso motore di memoria basato su LanceDB con una divergenza minima dall'upstream.
 
-### What changed
+> Tutto quanto segue documenta l'esperienza su pi. Vedi l'[Appendice upstream OpenClaw](#appendice-upstream-openclaw) in fondo per la tabella delle differenze del port e l'uso OpenClaw originale.
 
-| Area | OpenClaw (upstream) | Pi (this port) |
-|---|---|---|
-| Extension bootstrap | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → compiled `dist/pi-adapter/index.js`, declared via `pi.extensions` in `package.json` |
-| Config file | `openclaw.json` plugin entry | `~/.pi/agent/memory-lancedb-pro.json5` (or `$MEMORY_LANCEDB_PRO_CONFIG`) — same document shape |
-| Data & session base dir | `~/.openclaw/...` | `~/.pi/agent/...` (override with `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR`) |
-| CLI | `openclaw memory-pro …` | Standalone bin: `memory-pro …` (compiled from `pi-adapter/cli-main.ts`) |
-| Embedded sub-agent runner | OpenClaw runtime API | Shells out to `pi --mode json --no-tools …` (`pi-adapter/pi-runner.ts`) |
-| Version | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+---
 
-Lifecycle events (`input`, `session_start`, `before_agent_start`, `agent_end`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`) are mapped to the OpenClaw hooks via `pi-adapter/shim.ts`; the plugin's tools (`memory_store`, `memory_recall`, …) and the `/memory-pro` slash command register through the shim unchanged.
+## Perché memory-lancedb-pro?
 
-### Install
+La maggior parte degli agenti AI soffre di amnesia. Dimenticano tutto nel momento in cui avvii una nuova chat.
+
+**memory-lancedb-pro** è un'estensione di memoria a lungo termine di livello produttivo che trasforma il tuo agente in un **assistente di memoria AI** — cattura automaticamente ciò che conta, lascia che il rumore svanisca naturalmente e recupera la memoria giusta al momento giusto. Nessun tag manuale, nessun mal di testa da configurazione.
+
+### Il tuo assistente di memoria AI in azione
+
+**Senza memoria — ogni sessione parte da zero:**
+
+> **Tu:** "Usa i tab per l'indentazione, aggiungi sempre la gestione degli errori."
+> *(sessione successiva)*
+> **Tu:** "Te l'ho già detto — tab, non spazi!" 😤
+> *(sessione successiva)*
+> **Tu:** "...davvero, tab. E gestione degli errori. Di nuovo."
+
+**Con memory-lancedb-pro — il tuo agente impara e ricorda:**
+
+> **Tu:** "Usa i tab per l'indentazione, aggiungi sempre la gestione degli errori."
+> *(sessione successiva — l'agente richiama automaticamente le tue preferenze)*
+> **Agente:** *(applica silenziosamente tab + gestione degli errori)* ✅
+> **Tu:** "Perché il mese scorso abbiamo scelto PostgreSQL invece di MongoDB?"
+> **Agente:** "In base alla nostra discussione del 12 febbraio, i motivi principali erano..." ✅
+
+È questa la differenza che fa un **assistente di memoria AI** — impara il tuo stile, richiama le decisioni passate e offre risposte personalizzate senza che tu debba ripeterti.
+
+### Cos'altro sa fare?
+
+| | Cosa ottieni |
+|---|---|
+| **Cattura automatica** | Il tuo agente impara da ogni conversazione — nessun `memory_store` manuale necessario |
+| **Estrazione intelligente** | Classificazione LLM in 6 categorie: profili, preferenze, entità, eventi, casi, modelli |
+| **Dimenticanza intelligente** | Modello di decadimento Weibull — le memorie importanti restano, il rumore svanisce naturalmente |
+| **Recupero ibrido** | Ricerca vettoriale + full-text BM25, fusa con ri-ranking cross-encoder |
+| **Iniezione di contesto** | Le memorie rilevanti emergono automaticamente prima di ogni risposta |
+| **Isolamento multi-scope** | Confini di memoria per agente, per utente, per progetto |
+| **Qualsiasi provider** | OpenAI, Jina, Gemini, Ollama o qualsiasi API compatibile con OpenAI |
+| **Toolkit completo** | CLI, backup, migrazione, upgrade, export/import — pronto per la produzione |
+
+---
+
+## Avvio rapido
+
+> **Requisito CPU:** la tua CPU deve supportare le istruzioni **AVX**. La ricerca vettoriale nativa di LanceDB può richiedere **AVX2** su alcune build Linux x64 e può crashare le CPU solo-AVX con `SIGILL`; imposta `retrieval.disableNativeCosine: true` oppure `MEMORY_LANCEDB_DISABLE_NATIVE_COSINE=1` per usare una scansione di righe con ambito limitato più un ranking coseno in JavaScript. Controlla i flag della CPU con: `grep -o 'avx[^ ]*' /proc/cpuinfo | head -1` (nessun output = non supportato). Vedi [#419](https://github.com/CortexReach/memory-lancedb-pro/issues/419) e [#644](https://github.com/CortexReach/memory-lancedb-pro/issues/644) per i dettagli.
+
+### 1. Compila l'estensione
 
 ```bash
-# local development
 git clone https://github.com/lhxyzCJ/TestForPi-memory-lancedb-pro
 cd TestForPi-memory-lancedb-pro && npm install && npm run build
-
-# load the extension in a pi session
-pi -e ./dist/pi-adapter/index.js
-# or register it in ~/.pi/agent/settings.json:
-#   { "extensions": ["/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"] }
 ```
 
-### Configuration
+Il punto di ingresso di pi è `dist/pi-adapter/index.js` (compilato da `pi-adapter/index.ts`).
 
-Create `~/.pi/agent/memory-lancedb-pro.json5` (shape identical to the OpenClaw plugin entry config):
+### 2. Registra l'estensione
+
+Scegli una delle opzioni:
+
+**A. Tramite il file di impostazioni di pi (globale, tutti i progetti):**
+
+Aggiungi a `~/.pi/agent/settings.json`:
+
+```json
+{
+  "extensions": [
+    "/absolute/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js"
+  ]
+}
+```
+
+**B. Tramite il gestore pacchetti di pi:**
+
+```bash
+pi install /absolute/path/to/TestForPi-memory-lancedb-pro
+```
+
+**C. Test rapido per una sessione:**
+
+```bash
+pi -e /absolute/path/to/TestForPi-memory-lancedb-pro/dist/pi-adapter/index.js
+```
+
+**D. Auto-discovery (nessuna modifica alle impostazioni):** inserisci l'estensione compilata (o un `package.json` con un campo `pi.extensions`) in `~/.pi/agent/extensions/` (globale) o `.pi/extensions/` (locale al progetto) e riavvia pi.
+
+### 3. Crea il file di configurazione
+
+Crea `~/.pi/agent/memory-lancedb-pro.json5` (puoi anche usare `.json`, oppure puntare ovunque con `$MEMORY_LANCEDB_PRO_CONFIG`):
 
 ```json5
 {
@@ -68,314 +130,75 @@ Create `~/.pi/agent/memory-lancedb-pro.json5` (shape identical to the OpenClaw p
 }
 ```
 
-### CLI
+> La forma del documento di configurazione è identica alla voce del plugin OpenClaw upstream — sono accettati sia il semplice oggetto interno qui sopra sia un wrapper `{ "config": { ... } }`.
 
-```bash
-memory-pro list --scope global
-memory-pro search "query"
-memory-pro stats
+### 4. Verifica
+
+Avvia una sessione pi e controlla il log di avvio:
+
+```
+memory-lancedb-pro: smart extraction enabled
+memory-lancedb-pro@...: plugin registered (db: /root/.pi-agent/memory/lancedb-pro, ...)
 ```
 
-### Tests
+Poi chiedi al tuo agente di memorizzare e richiamare qualcosa:
 
-```bash
-npm test                       # full unit/e2e suite
-node scripts/run-ci-tests.mjs --all   # full CI manifest
-npm run test:pi-adapter        # pi adapter smoke test (mock pi API)
-```
+> **Tu:** "Ricorda: preferisco i tab agli spazi."
+> **Tu:** "Quali sono le mie preferenze di indentazione?"
 
-All upstream tests are preserved; `test/pi-adapter-smoke.test.mjs` and `test:pi-adapter` are new. The rest of this README documents the plugin itself and applies to both hosts.
+### Perché questi valori predefiniti?
 
----
-
-## Perché memory-lancedb-pro?
-
-La maggior parte degli agenti IA soffre di amnesia. Dimenticano tutto nel momento in cui si avvia una nuova chat.
-
-**memory-lancedb-pro** è un plugin di memoria a lungo termine di livello produttivo per OpenClaw che trasforma il tuo agente in un vero **Assistente Memoria IA** — cattura automaticamente ciò che conta, lascia il rumore dissolversi naturalmente e recupera il ricordo giusto al momento giusto. Nessun tag manuale, nessuna configurazione complicata.
-
-### Il tuo Assistente Memoria IA in azione
-
-**Senza memoria — ogni sessione parte da zero:**
-
-> **Tu:** "Usa i tab per l'indentazione, aggiungi sempre la gestione degli errori."
-> *(sessione successiva)*
-> **Tu:** "Te l'ho già detto — tab, non spazi!" 😤
-> *(sessione successiva)*
-> **Tu:** "…sul serio, tab. E gestione degli errori. Di nuovo."
-
-**Con memory-lancedb-pro — il tuo agente impara e ricorda:**
-
-> **Tu:** "Usa i tab per l'indentazione, aggiungi sempre la gestione degli errori."
-> *(sessione successiva — l'agente richiama automaticamente le tue preferenze)*
-> **Agente:** *(applica silenziosamente tab + gestione errori)* ✅
-> **Tu:** "Perché il mese scorso abbiamo scelto PostgreSQL invece di MongoDB?"
-> **Agente:** "In base alla nostra discussione del 12 febbraio, i motivi principali erano…" ✅
-
-Questa è la differenza che fa un **Assistente Memoria IA** — impara il tuo stile, ricorda le decisioni passate e fornisce risposte personalizzate senza che tu debba ripeterti.
-
-### Cos'altro può fare?
-
-| | Cosa ottieni |
-|---|---|
-| **Auto-Capture** | Il tuo agente impara da ogni conversazione — nessun `memory_store` manuale necessario |
-| **Estrazione intelligente** | Classificazione LLM in 6 categorie: profili, preferenze, entità, eventi, casi, pattern |
-| **Oblio intelligente** | Modello di decadimento Weibull — i ricordi importanti restano, il rumore svanisce |
-| **Ricerca ibrida** | Ricerca vettoriale + BM25 full-text, fusa con reranking cross-encoder |
-| **Iniezione di contesto** | I ricordi rilevanti emergono automaticamente prima di ogni risposta |
-| **Isolamento multi-scope** | Confini di memoria per agente, per utente, per progetto |
-| **Qualsiasi provider** | OpenAI, Jina, Gemini, Ollama o qualsiasi API compatibile OpenAI |
-| **Toolkit completo** | CLI, backup, migrazione, upgrade, esportazione/importazione — pronto per la produzione |
-
----
-
-## Avvio rapido
-
-> **Requisito CPU:** La tua CPU deve supportare le istruzioni **AVX/AVX2** (Intel Sandy Bridge 2011+ / AMD Bulldozer 2011+). Il motore vettoriale nativo di LanceDB le richiede — su CPU non supportate il plugin andrà in crash con `SIGILL` (Istruzione illegale). Verifica con: `grep -o 'avx[^ ]*' /proc/cpuinfo | head -1` (nessun output = non supportato). Vedi [#419](https://github.com/CortexReach/memory-lancedb-pro/issues/419).
-
-### Opzione A: Script di installazione con un clic (consigliato)
-
-Lo **[script di installazione](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)** mantenuto dalla community gestisce installazione, aggiornamento e riparazione in un solo comando:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/CortexReach/toolbox/main/memory-lancedb-pro-setup/setup-memory.sh -o setup-memory.sh
-bash setup-memory.sh
-```
-
-> Vedi [Ecosistema](#ecosistema) qui sotto per l'elenco completo degli scenari coperti e altri strumenti della community.
-
-### Opzione B: Installazione manuale
-
-**Tramite OpenClaw CLI (consigliato):**
-```bash
-openclaw plugins install memory-lancedb-pro@beta
-```
-
-**Oppure tramite npm:**
-```bash
-npm i memory-lancedb-pro@beta
-```
-> Se usi npm, dovrai anche aggiungere la directory di installazione del plugin come percorso **assoluto** in `plugins.load.paths` nel tuo `openclaw.json`. Questo è il problema di configurazione più comune.
-
-Aggiungi al tuo `openclaw.json`:
-
-```json
-{
-  "plugins": {
-    "slots": { "memory": "memory-lancedb-pro" },
-    "entries": {
-      "memory-lancedb-pro": {
-        "enabled": true,
-        "config": {
-          "embedding": {
-            "provider": "openai-compatible",
-            "apiKey": "${OPENAI_API_KEY}",
-            "model": "text-embedding-3-small"
-          },
-          "autoCapture": true,
-          "autoRecall": true,
-          "smartExtraction": true,
-          "extractMinMessages": 2,
-          "extractMaxChars": 8000,
-          "sessionMemory": { "enabled": false }
-        }
-      }
-    }
-  }
-}
-```
-
-**Perché questi valori predefiniti?**
 - `autoCapture` + `smartExtraction` → il tuo agente impara automaticamente da ogni conversazione
-- `autoRecall` → i ricordi rilevanti vengono iniettati prima di ogni risposta
+- `autoRecall` → le memorie rilevanti vengono iniettate prima di ogni risposta
 - `extractMinMessages: 2` → l'estrazione si attiva nelle normali chat a due turni
-- `sessionMemory.enabled: false` → evita di inquinare la ricerca con riassunti di sessione all'inizio
-
-Valida e riavvia:
-
-```bash
-openclaw config validate
-openclaw gateway restart
-openclaw logs --follow --plain | grep "memory-lancedb-pro"
-```
-
-Dovresti vedere:
-- `memory-lancedb-pro: smart extraction enabled`
-- `memory-lancedb-pro@...: plugin registered`
-
-Fatto! Il tuo agente ora ha una memoria a lungo termine.
-
-<details>
-<summary><strong>Ulteriori percorsi di installazione (utenti esistenti, aggiornamenti)</strong></summary>
-
-**Usi già OpenClaw?**
-
-1. Aggiungi il plugin con un percorso **assoluto** in `plugins.load.paths`
-2. Associa lo slot di memoria: `plugins.slots.memory = "memory-lancedb-pro"`
-3. Verifica: `openclaw plugins info memory-lancedb-pro && openclaw memory-pro stats`
-
-**Aggiornamento da versioni precedenti alla v1.1.0?**
-
-```bash
-# 1) Backup
-openclaw memory-pro export --scope global --output memories-backup.json
-# 2) Dry run
-openclaw memory-pro upgrade --dry-run
-# 3) Run upgrade
-openclaw memory-pro upgrade
-# 4) Verify
-openclaw memory-pro stats
-```
-
-Vedi `CHANGELOG-v1.1.0.md` per le modifiche comportamentali e le motivazioni dell'aggiornamento.
-
-</details>
-
-<details>
-<summary><strong>Importazione rapida Telegram Bot (clicca per espandere)</strong></summary>
-
-Se stai usando l'integrazione Telegram di OpenClaw, il modo più semplice è inviare un comando di importazione direttamente al Bot principale invece di modificare manualmente la configurazione.
-
-Invia questo messaggio:
-
-```text
-Help me connect this memory plugin with the most user-friendly configuration: https://github.com/CortexReach/memory-lancedb-pro
-
-Requirements:
-1. Set it as the only active memory plugin
-2. Use Jina for embedding, and set embedding.taskQuery=retrieval.query and embedding.taskPassage=retrieval.passage
-3. Use Jina for reranker
-4. Use gpt-4o-mini for the smart-extraction LLM
-5. Enable autoCapture, autoRecall, smartExtraction
-6. extractMinMessages=2
-7. sessionMemory.enabled=false
-8. captureAssistant=false
-9. retrieval mode=hybrid, vectorWeight=0.7, bm25Weight=0.3
-10. rerank=cross-encoder, candidatePoolSize=12, minScore=0.6, hardMinScore=0.62
-11. Generate the final openclaw.json config directly, not just an explanation
-```
-
-</details>
+- `sessionMemory.enabled: false` → evita di contaminare il recupero con i riepiloghi di sessione fin dal primo giorno
 
 ---
 
-## Ecosistema
+## ⚠️ Architettura della memoria (Importante)
 
-memory-lancedb-pro è il plugin principale. La community ha costruito strumenti per rendere l'installazione e l'uso quotidiano ancora più fluidi:
+L'estensione espone una capacità di memoria con due archivi coordinati:
 
-### Script di installazione — Installazione, aggiornamento e riparazione con un clic
+| Livello di memoria | Archivio | A cosa serve | Richiamabile? |
+|---|---|---|---|
+| **Memoria del plugin** | LanceDB (vector store) | Richiamo semantico tramite `memory_recall` / auto-recall | ✅ Sì |
+| **Corpus canonico** | `MEMORY.md`, `memory/**/*.md`, trascrizioni di sessione recenti, `memory/dreaming/**/*.md` | File fonte di verità e artefatti pubblici | ✅ Tramite l'indice semantico LanceDB quando `canonicalCorpus.enabled` è true |
 
-> **[CortexReach/toolbox/memory-lancedb-pro-setup](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)**
+**Principio chiave:**
+> I file canonici restano la fonte di verità. LanceDB è l'indice semantico usato per recuperarli con percorsi ancorati, intervalli di righe, estratti e citazioni.
 
-Non è un semplice installer — lo script gestisce in modo intelligente numerosi scenari reali:
+**Cosa significa per te:**
+- Hai bisogno del richiamo semantico? → Usa `memory_store` o lascia fare alla cattura automatica
+- `memory/YYYY-MM-DD.md` → trattalo come un **diario / registro giornaliero** che può anche essere indicizzato per la ricerca semantica
+- `MEMORY.md` → riferimento curato e leggibile dall'uomo che può essere indicizzato come contesto canonico
+- `memory/dreaming/**/*.md` → report dei sogni esposti come artefatti pubblici e indicizzati come contesto di riflessione
+- Trascrizioni di sessione JSONL → indicizzate come `source: "sessions"` quando `canonicalCorpus.includeSessionTranscripts` è abilitato
+- Memoria del plugin → percorso di scrittura primario per fatti durevoli, preferenze, decisioni e memorie catturate automaticamente
 
-| La tua situazione | Cosa fa lo script |
+### Dove vivono i dati (pi)
+
+| Cosa | Percorso |
 |---|---|
-| Mai installato | Download → installazione dipendenze → scelta configurazione → scrittura in openclaw.json → riavvio |
-| Installato tramite `git clone`, bloccato su un vecchio commit | `git fetch` + `checkout` automatico all'ultima versione → reinstallazione dipendenze → verifica |
-| La configurazione ha campi non validi | Rilevamento automatico tramite filtro schema, rimozione campi non supportati |
-| Installato tramite `npm` | Salta l'aggiornamento git, ricorda di eseguire `npm update` autonomamente |
-| CLI `openclaw` non funzionante per configurazione non valida | Fallback: lettura diretta del percorso workspace dal file `openclaw.json` |
-| `extensions/` invece di `plugins/` | Rilevamento automatico della posizione del plugin da configurazione o filesystem |
-| Già aggiornato | Solo controlli di integrità, nessuna modifica |
+| Database del plugin (LanceDB) | `~/.pi/agent/memory/lancedb-pro` (o `$MEMORY_LANCEDB_PRO_DB_PATH`) |
+| Mirror Markdown | `~/.pi/agent/memory/md-mirror` (o `$MEMORY_LANCEDB_PRO_MD_MIRROR_DIR`) |
+| Trascrizioni di sessione | `~/.pi/agent/sessions/--<cwd>--/*.jsonl` |
+| Skill globali | `~/.pi/agent/skills` |
 
-```bash
-bash setup-memory.sh                    # Installa o aggiorna
-bash setup-memory.sh --dry-run          # Solo anteprima
-bash setup-memory.sh --beta             # Includi versioni pre-release
-bash setup-memory.sh --uninstall        # Ripristina configurazione e rimuovi plugin
-```
+Il percorso base è `~/.pi/agent`; puoi sovrascriverlo con `PI_CODING_AGENT_DIR` o `PI_AGENT_DIR`. I percorsi relativi nella configurazione (`dbPath`, `mdMirrorDir`, ...) vengono risolti rispetto alla home dell'agente pi.
 
-Preset di provider integrati: **Jina / DashScope / SiliconFlow / OpenAI / Ollama**, oppure usa la tua API compatibile OpenAI. Per l'utilizzo completo (inclusi `--ref`, `--selfcheck-only` e altro), consulta il [README dello script di installazione](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup).
+### Posizioni dei file di configurazione (in ordine di priorità)
 
-### Claude Code / OpenClaw Skill — Configurazione guidata dall'IA
+1. `$MEMORY_LANCEDB_PRO_CONFIG` (percorso esplicito)
+2. `~/.pi/agent/memory-lancedb-pro.json5`
+3. `~/.pi/agent/memory-lancedb-pro.json`
 
-> **[CortexReach/memory-lancedb-pro-skill](https://github.com/CortexReach/memory-lancedb-pro-skill)**
-
-Installa questa Skill e il tuo agente IA (Claude Code o OpenClaw) acquisisce una conoscenza approfondita di tutte le funzionalità di memory-lancedb-pro. Basta dire **"aiutami ad attivare la configurazione migliore"** per ottenere:
-
-- **Workflow di configurazione guidato in 7 passaggi** con 4 piani di distribuzione:
-  - Full Power (Jina + OpenAI) / Budget (reranker SiliconFlow gratuito) / Simple (solo OpenAI) / Completamente locale (Ollama, zero costi API)
-- **Tutti i 9 strumenti MCP** usati correttamente: `memory_recall`, `memory_store`, `memory_forget`, `memory_update`, `memory_stats`, `memory_list`, `self_improvement_log`, `self_improvement_extract_skill`, `self_improvement_review` *(il set completo richiede `enableManagementTools: true` — la configurazione Quick Start predefinita espone i 4 strumenti principali)*
-- **Prevenzione delle insidie comuni**: attivazione plugin workspace, `autoRecall` predefinito a false, cache jiti, variabili d'ambiente, isolamento scope, ecc.
-
-**Installazione per Claude Code:**
-```bash
-git clone https://github.com/CortexReach/memory-lancedb-pro-skill.git ~/.claude/skills/memory-lancedb-pro
-```
-
-**Installazione per OpenClaw:**
-```bash
-git clone https://github.com/CortexReach/memory-lancedb-pro-skill.git ~/.openclaw/workspace/skills/memory-lancedb-pro-skill
-```
-
----
-
-## Tutorial video
-
-> Guida completa: installazione, configurazione e funzionamento interno della ricerca ibrida.
-
-[![YouTube Video](https://img.shields.io/badge/YouTube-Watch%20Now-red?style=for-the-badge&logo=youtube)](https://youtu.be/MtukF1C8epQ)
-**https://youtu.be/MtukF1C8epQ**
-
-[![Bilibili Video](https://img.shields.io/badge/Bilibili-Watch%20Now-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1zUf2BGEgn/)
-**https://www.bilibili.com/video/BV1zUf2BGEgn/**
-
----
-
-## Architettura
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   index.ts (Entry Point)                │
-│  Plugin Registration · Config Parsing · Lifecycle Hooks │
-└────────┬──────────┬──────────┬──────────┬───────────────┘
-         │          │          │          │
-    ┌────▼───┐ ┌────▼───┐ ┌───▼────┐ ┌──▼──────────┐
-    │ store  │ │embedder│ │retriever│ │   scopes    │
-    │ .ts    │ │ .ts    │ │ .ts    │ │    .ts      │
-    └────────┘ └────────┘ └────────┘ └─────────────┘
-         │                     │
-    ┌────▼───┐           ┌─────▼──────────┐
-    │migrate │           │noise-filter.ts │
-    │ .ts    │           │adaptive-       │
-    └────────┘           │retrieval.ts    │
-                         └────────────────┘
-    ┌─────────────┐   ┌──────────┐
-    │  tools.ts   │   │  cli.ts  │
-    │ (Agent API) │   │ (CLI)    │
-    └─────────────┘   └──────────┘
-```
-
-> Per un approfondimento sull'architettura completa, consulta [docs/memory_architecture_analysis.md](docs/memory_architecture_analysis.md).
-
-<details>
-<summary><strong>Riferimento file (clicca per espandere)</strong></summary>
-
-| File | Scopo |
-| --- | --- |
-| `index.ts` | Punto di ingresso del plugin. Si registra con l'API Plugin di OpenClaw, analizza la configurazione, monta gli hook del ciclo di vita |
-| `openclaw.plugin.json` | Metadati del plugin + dichiarazione completa della configurazione JSON Schema |
-| `cli.ts` | Comandi CLI: `memory-pro list/search/stats/delete/delete-bulk/export/import/reembed/upgrade/migrate` |
-| `src/store.ts` | Layer di storage LanceDB. Creazione tabelle / indicizzazione FTS / ricerca vettoriale / ricerca BM25 / CRUD |
-| `src/embedder.ts` | Astrazione embedding. Compatibile con qualsiasi provider API compatibile OpenAI |
-| `src/retriever.ts` | Motore di ricerca ibrido. Vettoriale + BM25 → Fusione ibrida → Rerank → Decadimento ciclo di vita → Filtro |
-| `src/scopes.ts` | Controllo accessi multi-scope |
-| `src/tools.ts` | Definizioni degli strumenti agente: `memory_recall`, `memory_store`, `memory_forget`, `memory_update` + strumenti di gestione |
-| `src/noise-filter.ts` | Filtra rifiuti dell'agente, meta-domande, saluti e contenuti di bassa qualità |
-| `src/adaptive-retrieval.ts` | Determina se una query necessita di ricerca nella memoria |
-| `src/migrate.ts` | Migrazione dal `memory-lancedb` integrato a Pro |
-| `src/smart-extractor.ts` | Estrazione LLM in 6 categorie con archiviazione a strati L0/L1/L2 e deduplicazione in due fasi |
-| `src/decay-engine.ts` | Modello di decadimento esponenziale esteso Weibull |
-| `src/tier-manager.ts` | Promozione/retrocessione a tre livelli: Peripheral ↔ Working ↔ Core |
-
-</details>
+Se non viene trovato alcun file di configurazione, l'estensione registra un avviso e resta disabilitata — una configurazione mancante o rotta non fa mai cadere la sessione pi.
 
 ---
 
 ## Funzionalità principali
 
-### Ricerca ibrida
+### Recupero ibrido
 
 ```
 Query → embedQuery() ─┐
@@ -383,84 +206,87 @@ Query → embedQuery() ─┐
 Query → BM25 FTS ─────┘
 ```
 
-- **Ricerca vettoriale** — similarità semantica tramite LanceDB ANN (distanza del coseno)
-- **Ricerca full-text BM25** — corrispondenza esatta delle parole chiave tramite indice FTS di LanceDB
-- **Fusione ibrida** — punteggio vettoriale come base, i risultati BM25 ricevono un boost ponderato (non RRF standard — ottimizzato per la qualità di richiamo nel mondo reale)
+- **Ricerca vettoriale** — similarità semantica tramite ANN di LanceDB (distanza coseno)
+- **Ricerca full-text BM25** — corrispondenza esatta delle parole chiave tramite l'indice FTS di LanceDB
+- **Fusione ibrida** — punteggio vettoriale come base, i risultati BM25 ricevono un boost ponderato (non RRF standard — ottimizzato per la qualità del richiamo nel mondo reale)
 - **Pesi configurabili** — `vectorWeight`, `bm25Weight`, `minScore`
 
-### Reranking Cross-Encoder
+### Ri-ranking cross-encoder
 
-- Adattatori integrati per **Jina**, **SiliconFlow**, **Voyage AI** e **Pinecone**
-- Compatibile con qualsiasi endpoint compatibile Jina (ad es. Hugging Face TEI, DashScope)
-- Punteggio ibrido: 60% cross-encoder + 40% punteggio fuso originale
-- Degradazione elegante: fallback sulla similarità del coseno in caso di errore API
+- Adapter integrati per **Jina**, **SiliconFlow**, **Voyage AI** e **Pinecone**
+- Compatibile con qualsiasi endpoint compatibile con Jina (es. Hugging Face TEI, DashScope)
+- Scoring ibrido: 60% cross-encoder + 40% punteggio fuso originale
+- Degradazione graduale: in caso di errore API ripiega sulla similarità coseno
 
-### Pipeline di punteggio multi-fase
+### Pipeline di scoring a più stadi
 
-| Fase | Effetto |
+| Stadio | Effetto |
 | --- | --- |
-| **Fusione ibrida** | Combina richiamo semantico e corrispondenza esatta |
-| **Rerank Cross-Encoder** | Promuove risultati semanticamente precisi |
-| **Boost decadimento ciclo di vita** | Freschezza Weibull + frequenza di accesso + importance × confidence |
-| **Normalizzazione lunghezza** | Impedisce alle voci lunghe di dominare (ancora: 500 caratteri) |
-| **Punteggio minimo rigido** | Rimuove risultati irrilevanti (predefinito: 0.35) |
-| **Diversità MMR** | Similarità coseno > 0.85 → retrocesso |
+| **Fusione ibrida** | Combina il richiamo semantico e quello per corrispondenza esatta |
+| **Ri-rank cross-encoder** | Promuove i risultati semanticamente precisi |
+| **Boost di decadimento del ciclo di vita** | Freschezza Weibull + frequenza di accesso + importanza × confidenza |
+| **Normalizzazione della lunghezza** | Evita che le voci lunghe dominino (ancora: 500 caratteri) |
+| **Punteggio minimo rigido** | Rimuove i risultati irrilevanti (predefinito: 0.35) |
+| **Diversità MMR** | Similarità coseno > 0.85 → declassata |
 
 ### Estrazione intelligente della memoria (v1.1.0)
 
-- **Estrazione LLM in 6 categorie**: profilo, preferenze, entità, eventi, casi, pattern
-- **Archiviazione a strati L0/L1/L2**: L0 (indice in una frase) → L1 (riepilogo strutturato) → L2 (narrazione completa)
-- **Deduplicazione in due fasi**: pre-filtro similarità vettoriale (≥0.7) → decisione semantica LLM (CREATE/MERGE/SKIP)
-- **Fusione consapevole delle categorie**: `profile` viene sempre fuso, `events`/`cases` solo in aggiunta
+- **Estrazione LLM in 6 categorie**: profilo, preferenze, entità, eventi, casi, modelli
+- **Archiviazione a livelli L0/L1/L2**: L0 (indice a una frase) → L1 (riepilogo strutturato) → L2 (narrazione completa)
+- **Deduplicazione a due stadi**: pre-filtro per similarità vettoriale (≥0.7) → decisione semantica LLM (CREATE/MERGE/SKIP)
+- **Merge consapevole delle categorie**: `profile` viene sempre unito, `events`/`cases` sono solo-append
 
 ### Gestione del ciclo di vita della memoria (v1.1.0)
 
-- **Motore di decadimento Weibull**: punteggio composito = freschezza + frequenza + valore intrinseco
+- **Motore di decadimento Weibull**: punteggio composito = attualità + frequenza + valore intrinseco
 - **Promozione a tre livelli**: `Peripheral ↔ Working ↔ Core` con soglie configurabili
-- **Rinforzo per accesso**: i ricordi richiamati frequentemente decadono più lentamente (stile ripetizione spaziata)
-- **Emivita modulata dall'importanza**: i ricordi importanti decadono più lentamente
+- **Rinforzo all'accesso**: le memorie richiamate di frequente decadono più lentamente (stile spaced-repetition)
+- **Emivita modulata dall'importanza**: le memorie importanti decadono più lentamente
 
 ### Isolamento multi-scope
 
 - Scope integrati: `global`, `agent:<id>`, `custom:<name>`, `project:<id>`, `user:<id>`
-- Controllo accessi a livello agente tramite `scopes.agentAccess`
-- Predefinito: ogni agente accede a `global` + il proprio scope `agent:<id>`
+- Controllo degli accessi a livello di agente tramite `scopes.agentAccess`
+- Predefinito: ogni agente accede a `global` + al proprio scope `agent:<id>`
+- Gli strumenti di sola lettura come `memory_recall`, `memory_search`, `memory_list` e `memory_debug` falliscono in modo soft quando uno scope richiesto non è accessibile: cercano invece negli scope accessibili al chiamante e restituiscono `ignoredScope` più `accessibleScopes` nei dettagli. Gli strumenti di scrittura e mutazione restituiscono comunque `scope_access_denied` per gli scope non accessibili.
 
-### Auto-Capture e Auto-Recall
+### Cattura automatica e auto-richiamo
 
-- **Auto-Capture** (`agent_end`): estrae preferenze/fatti/decisioni/entità dalle conversazioni, deduplica, memorizza fino a 3 per turno
-- **Auto-Recall** (`before_agent_start`): inietta il contesto `<relevant-memories>` (fino a 3 voci)
+- **Auto-Capture** (`agent_end`): estrae preferenza/fatto/decisione/entità dalle conversazioni, deduplica e memorizza fino a 3 per turno
+- **Auto-Recall** (prima di ogni costruzione del prompt): inietta il contesto `<relevant-memories>` (fino a 3 voci)
 
-### Filtraggio del rumore e ricerca adattiva
+> **Nota:** su pi, questi hook OpenClaw (`agent_end`, `before_prompt_build`, ...) sono mappati dagli eventi del ciclo di vita di pi (`agent_end`, `input`, `session_start`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`) da `pi-adapter/shim.ts`.
 
-- Filtra contenuti di bassa qualità: rifiuti dell'agente, meta-domande, saluti
-- Salta la ricerca per: saluti, comandi slash, conferme semplici, emoji
-- Forza la ricerca per parole chiave della memoria ("ricorda", "precedentemente", "l'ultima volta")
-- Soglie CJK (cinese: 6 caratteri vs inglese: 15 caratteri)
+### Filtro del rumore e recupero adattivo
+
+- Filtra i contenuti di bassa qualità: rifiuti dell'agente, meta-domande, saluti
+- Salta il recupero per saluti, comandi slash, semplici conferme, emoji
+- Forza il recupero per le parole chiave della memoria ("remember", "previously", "last time")
+- Soglie consapevoli del CJK (cinese: 6 caratteri vs inglese: 15 caratteri)
 
 ---
 
 <details>
-<summary><strong>Confronto con <code>memory-lancedb</code> integrato (clicca per espandere)</strong></summary>
+<summary><strong>Confronto con il <code>memory-lancedb</code> integrato (clicca per espandere)</strong></summary>
 
-| Funzionalità | `memory-lancedb` integrato | **memory-lancedb-pro** |
+| Funzione | `memory-lancedb` integrato | **memory-lancedb-pro** |
 | --- | :---: | :---: |
 | Ricerca vettoriale | Sì | Sì |
 | Ricerca full-text BM25 | - | Sì |
-| Fusione ibrida (Vettoriale + BM25) | - | Sì |
-| Rerank cross-encoder (multi-provider) | - | Sì |
-| Boost di freschezza e decadimento temporale | - | Sì |
-| Normalizzazione lunghezza | - | Sì |
+| Fusione ibrida (Vettore + BM25) | - | Sì |
+| Ri-rank cross-encoder (multi-provider) | - | Sì |
+| Boost di attualità e decadimento temporale | - | Sì |
+| Normalizzazione della lunghezza | - | Sì |
 | Diversità MMR | - | Sì |
 | Isolamento multi-scope | - | Sì |
-| Filtraggio del rumore | - | Sì |
-| Ricerca adattiva | - | Sì |
+| Filtro del rumore | - | Sì |
+| Recupero adattivo | - | Sì |
 | CLI di gestione | - | Sì |
 | Memoria di sessione | - | Sì |
-| Embedding task-aware | - | Sì |
+| Embedding consapevoli del task | - | Sì |
 | **Estrazione intelligente LLM (6 categorie)** | - | Sì (v1.1.0) |
-| **Decadimento Weibull + promozione livelli** | - | Sì (v1.1.0) |
-| Qualsiasi embedding compatibile OpenAI | Limitato | Sì |
+| **Decadimento Weibull + Promozione a livelli** | - | Sì (v1.1.0) |
+| Qualsiasi embedding compatibile con OpenAI | Limitato | Sì |
 
 </details>
 
@@ -468,66 +294,87 @@ Query → BM25 FTS ─────┘
 
 ## Configurazione
 
-<details>
-<summary><strong>Esempio di configurazione completa</strong></summary>
+Tutta la configurazione vive in `~/.pi/agent/memory-lancedb-pro.json5` (o `$MEMORY_LANCEDB_PRO_CONFIG`).
+
+I campi delle chiavi API (`embedding.apiKey`, `retrieval.rerankApiKey` e `llm.apiKey`) accettano stringhe semplici, segnaposto `${ENV_VAR}` o oggetti SecretRef. Questo plugin supporta le sorgenti SecretRef `env` e `file`:
 
 ```json
 {
   "embedding": {
-    "apiKey": "${JINA_API_KEY}",
-    "model": "jina-embeddings-v5-text-small",
-    "baseURL": "https://api.jina.ai/v1",
-    "dimensions": 1024,
-    "taskQuery": "retrieval.query",
-    "taskPassage": "retrieval.passage",
-    "normalized": true
+    "apiKey": { "source": "env", "id": "JINA_API_KEY" }
   },
-  "dbPath": "~/.openclaw/memory/lancedb-pro",
-  "autoCapture": true,
-  "autoRecall": true,
   "retrieval": {
-    "mode": "hybrid",
-    "vectorWeight": 0.7,
-    "bm25Weight": 0.3,
-    "minScore": 0.3,
-    "rerank": "cross-encoder",
-    "rerankApiKey": "${JINA_API_KEY}",
-    "rerankModel": "jina-reranker-v3",
-    "rerankEndpoint": "https://api.jina.ai/v1/rerank",
-    "rerankProvider": "jina",
-    "candidatePoolSize": 20,
-    "recencyHalfLifeDays": 14,
-    "recencyWeight": 0.1,
-    "filterNoise": true,
-    "lengthNormAnchor": 500,
-    "hardMinScore": 0.35,
-    "timeDecayHalfLifeDays": 60,
-    "reinforcementFactor": 0.5,
-    "maxHalfLifeMultiplier": 3
+    "rerankApiKey": { "source": "file", "id": "~/.pi/agent/secrets/jina-rerank" }
+  }
+}
+```
+
+Per `source: "file"`, `id` viene risolto rispetto alla home dell'agente pi e letto come file UTF-8. Il campo opzionale `provider` è accettato per compatibilità con la forma dell'oggetto SecretRef ma non viene usato per la selezione del provider. `exec` e le altre sorgenti SecretRef vengono rifiutate dalla validazione della configurazione a runtime.
+
+<details>
+<summary><strong>Esempio di configurazione completo</strong></summary>
+
+```json5
+{
+  embedding: {
+    apiKey: "${JINA_API_KEY}",
+    model: "jina-embeddings-v5-text-small",
+    baseURL: "https://api.jina.ai/v1",
+    dimensions: 1024,
+    taskQuery: "retrieval.query",
+    taskPassage: "retrieval.passage",
+    normalized: true,
+    maxInputChars: 1400,
+    clientTimeoutMs: 30000
   },
-  "enableManagementTools": false,
-  "scopes": {
-    "default": "global",
-    "definitions": {
-      "global": { "description": "Shared knowledge" },
-      "agent:discord-bot": { "description": "Discord bot private" }
+  dbPath: "~/.pi/agent/memory/lancedb-pro",
+  autoCapture: true,
+  autoRecall: true,
+  retrieval: {
+    mode: "hybrid",
+    vectorWeight: 0.7,
+    bm25Weight: 0.3,
+    minScore: 0.3,
+    rerank: "cross-encoder",
+    rerankApiKey: "${JINA_API_KEY}",
+    rerankModel: "jina-reranker-v3",
+    rerankEndpoint: "https://api.jina.ai/v1/rerank",
+    rerankProvider: "jina",
+    candidatePoolSize: 20,
+    recencyHalfLifeDays: 14,
+    recencyWeight: 0.1,
+    filterNoise: true,
+    disableNativeCosine: false,
+    lengthNormAnchor: 500,
+    hardMinScore: 0.35,
+    timeDecayHalfLifeDays: 60,
+    reinforcementFactor: 0.5,
+    maxHalfLifeMultiplier: 3
+  },
+  enableManagementTools: false,
+  scopes: {
+    default: "global",
+    definitions: {
+      global: { description: "Shared knowledge" },
+      "agent:main": { description: "Main agent private" }
     },
-    "agentAccess": {
-      "discord-bot": ["global", "agent:discord-bot"]
+    agentAccess: {
+      main: ["global", "agent:main"]
     }
   },
-  "sessionMemory": {
-    "enabled": false,
-    "messageCount": 15
+  sessionStrategy: "none",
+  sessionMemory: {
+    enabled: false,
+    messageCount: 15
   },
-  "smartExtraction": true,
-  "llm": {
-    "apiKey": "${OPENAI_API_KEY}",
-    "model": "gpt-4o-mini",
-    "baseURL": "https://api.openai.com/v1"
+  smartExtraction: true,
+  llm: {
+    apiKey: "${OPENAI_API_KEY}",
+    model: "gpt-4o-mini",
+    baseURL: "https://api.openai.com/v1"
   },
-  "extractMinMessages": 2,
-  "extractMaxChars": 8000
+  extractMinMessages: 2,
+  extractMaxChars: 8000
 }
 ```
 
@@ -536,7 +383,7 @@ Query → BM25 FTS ─────┘
 <details>
 <summary><strong>Provider di embedding</strong></summary>
 
-Funziona con **qualsiasi API di embedding compatibile OpenAI**:
+Funziona con **API di embedding compatibili con OpenAI**, inclusi adapter di payload specifici per servizi come Jina e Voyage:
 
 | Provider | Modello | Base URL | Dimensioni |
 | --- | --- | --- | --- |
@@ -546,52 +393,58 @@ Funziona con **qualsiasi API di embedding compatibile OpenAI**:
 | **Google Gemini** | `gemini-embedding-001` | `https://generativelanguage.googleapis.com/v1beta/openai/` | 3072 |
 | **Ollama** (locale) | `nomic-embed-text` | `http://localhost:11434/v1` | specifico del provider |
 
+Le richieste di embedding Voyage usano la forma di payload `model` + `input` di Voyage. Quando `requestDimensions` è configurato, viene inviato come `output_dimension`; i campi solo-OpenAI come `encoding_format` vengono omessi.
+
+Imposta `embedding.maxInputChars` per i server di embedding locali con limiti di contesto o batch ridotti. Il plugin applica un valore predefinito conservativo per `nomic-embed-text`; con lo chunking automatico abilitato, i documenti più lunghi vengono divisi prima che il limite venga applicato a ogni richiesta del provider.
+
 </details>
 
 <details>
-<summary><strong>Provider di rerank</strong></summary>
+<summary><strong>Provider di ri-rank</strong></summary>
 
-Il reranking cross-encoder supporta più provider tramite `rerankProvider`:
+Il ri-ranking cross-encoder supporta più provider tramite `rerankProvider`:
 
 | Provider | `rerankProvider` | Modello di esempio |
 | --- | --- | --- |
 | **Jina** (predefinito) | `jina` | `jina-reranker-v3` |
-| **SiliconFlow** (piano gratuito disponibile) | `siliconflow` | `BAAI/bge-reranker-v2-m3` |
+| **SiliconFlow** (disponibile il piano gratuito) | `siliconflow` | `BAAI/bge-reranker-v2-m3` |
 | **Voyage AI** | `voyage` | `rerank-2.5` |
 | **Pinecone** | `pinecone` | `bge-reranker-v2-m3` |
 
-Funziona anche qualsiasi endpoint di rerank compatibile Jina — imposta `rerankProvider: "jina"` e punta `rerankEndpoint` al tuo servizio (ad es. Hugging Face TEI, DashScope `qwen3-rerank`).
+Funziona anche qualsiasi endpoint di ri-rank compatibile con Jina — imposta `rerankProvider: "jina"` e punta `rerankEndpoint` al tuo servizio (es. Hugging Face TEI, DashScope `qwen3-rerank`).
 
 </details>
 
 <details>
 <summary><strong>Estrazione intelligente (LLM) — v1.1.0</strong></summary>
 
-Quando `smartExtraction` è abilitato (predefinito: `true`), il plugin utilizza un LLM per estrarre e classificare intelligentemente i ricordi invece di trigger basati su regex.
+Quando `smartExtraction` è abilitato (predefinito: `true`), il plugin usa un LLM per estrarre e classificare le memorie in modo intelligente invece dei trigger basati su regex.
 
 | Campo | Tipo | Predefinito | Descrizione |
 |-------|------|---------|-------------|
 | `smartExtraction` | boolean | `true` | Abilita/disabilita l'estrazione LLM in 6 categorie |
-| `llm.auth` | string | `api-key` | `api-key` usa `llm.apiKey` / `embedding.apiKey`; `oauth` usa un file token OAuth con scope plugin per impostazione predefinita |
-| `llm.apiKey` | string | *(fallback su `embedding.apiKey`)* | Chiave API per il provider LLM |
+| `llm.auth` | string | `api-key` | `api-key` usa `llm.apiKey` / `embedding.apiKey`; `oauth` usa per impostazione predefinita un file di token OAuth con ambito plugin |
+| `llm.apiKey` | string | *(ripiega su `embedding.apiKey`)* | Chiave API per il provider LLM |
 | `llm.model` | string | `openai/gpt-oss-120b` | Nome del modello LLM |
-| `llm.baseURL` | string | *(fallback su `embedding.baseURL`)* | Endpoint API LLM |
+| `llm.baseURL` | string | *(ripiega su `embedding.baseURL`)* | Endpoint API LLM |
 | `llm.oauthProvider` | string | `openai-codex` | ID del provider OAuth usato quando `llm.auth` è `oauth` |
-| `llm.oauthPath` | string | `~/.openclaw/.memory-lancedb-pro/oauth.json` | File token OAuth usato quando `llm.auth` è `oauth` |
-| `llm.timeoutMs` | number | `30000` | Timeout della richiesta LLM in millisecondi |
-| `extractMinMessages` | number | `2` | Messaggi minimi prima che l'estrazione si attivi |
-| `extractMaxChars` | number | `8000` | Caratteri massimi inviati al LLM |
+| `llm.oauthPath` | string | `~/.pi/agent/.memory-lancedb-pro/oauth.json` | File di token OAuth usato quando `llm.auth` è `oauth` |
+| `llm.timeoutMs` | number | `30000` | Timeout delle richieste LLM in millisecondi |
+| `extractMinMessages` | number | `2` | Numero minimo di messaggi prima che scatti l'estrazione |
+| `extractMaxChars` | number | `8000` | Numero massimo di caratteri inviati all'LLM |
 
+Configurazione OAuth `llm` (usa una cache di login Codex / ChatGPT esistente per le chiamate LLM):
 
-Configurazione `llm` OAuth (usa la cache di login esistente di Codex / ChatGPT per le chiamate LLM):
-```json
+> **Nota:** i flussi OAuth sono ereditati dal plugin OpenClaw upstream. Su pi, `memory-pro auth login` richiama la stessa logica OAuth; il file di token è predefinito in `~/.pi/agent/.memory-lancedb-pro/oauth.json`.
+
+```json5
 {
-  "llm": {
-    "auth": "oauth",
-    "oauthProvider": "openai-codex",
-    "model": "gpt-5.4",
-    "oauthPath": "${HOME}/.openclaw/.memory-lancedb-pro/oauth.json",
-    "timeoutMs": 30000
+  llm: {
+    auth: "oauth",
+    oauthProvider: "openai-codex",
+    model: "gpt-5.4",
+    oauthPath: "${HOME}/.pi/agent/.memory-lancedb-pro/oauth.json",
+    timeoutMs: 30000
   }
 }
 ```
@@ -599,37 +452,54 @@ Configurazione `llm` OAuth (usa la cache di login esistente di Codex / ChatGPT p
 Note per `llm.auth: "oauth"`:
 
 - `llm.oauthProvider` è attualmente `openai-codex`.
-- I token OAuth sono salvati di default in `~/.openclaw/.memory-lancedb-pro/oauth.json`.
-- Puoi impostare `llm.oauthPath` se vuoi salvare quel file altrove.
-- `auth login` crea uno snapshot della configurazione `llm` precedente con api-key accanto al file OAuth, e `auth logout` ripristina quello snapshot quando disponibile.
-- Il passaggio da `api-key` a `oauth` non trasferisce automaticamente `llm.baseURL`. Impostalo manualmente in modalità OAuth solo quando vuoi intenzionalmente un backend personalizzato compatibile ChatGPT/Codex.
+- I token OAuth sono predefiniti in `~/.pi/agent/.memory-lancedb-pro/oauth.json`.
+- Puoi impostare `llm.oauthPath` se vuoi archiviare quel file altrove.
+- `auth login` salva un'istantanea della precedente configurazione `llm` con api-key accanto al file OAuth, e `auth logout` ripristina quell'istantanea quando disponibile.
+- Il passaggio da `api-key` a `oauth` non trasferisce automaticamente `llm.baseURL`. Impostalo manualmente in modalità OAuth solo se vuoi intenzionalmente un backend compatibile ChatGPT/Codex personalizzato.
 
 </details>
 
 <details>
-<summary><strong>Configurazione ciclo di vita (Decadimento + Livelli)</strong></summary>
+<summary><strong>Fallback CPU legacy</strong></summary>
+
+Se un host Linux x64 solo-AVX crasha nella ricerca vettoriale nativa di LanceDB con `SIGILL`, disabilita il coseno nativo e lascia che memory-lancedb-pro scansiona le righe nell'ambito e le classifichi in JavaScript:
+
+```json5
+{
+  retrieval: {
+    disableNativeCosine: true
+  }
+}
+```
+
+Puoi anche impostare `MEMORY_LANCEDB_DISABLE_NATIVE_COSINE=1` per lo stesso comportamento.
+
+</details>
+
+<details>
+<summary><strong>Configurazione del ciclo di vita (Decadimento + Livelli)</strong></summary>
 
 | Campo | Predefinito | Descrizione |
 |-------|---------|-------------|
-| `decay.recencyHalfLifeDays` | `30` | Emivita base per il decadimento di freschezza Weibull |
+| `decay.recencyHalfLifeDays` | `30` | Emivita di base per il decadimento di attualità Weibull |
 | `decay.frequencyWeight` | `0.3` | Peso della frequenza di accesso nel punteggio composito |
-| `decay.intrinsicWeight` | `0.3` | Peso di `importance × confidence` |
-| `decay.betaCore` | `0.8` | Beta Weibull per i ricordi `core` |
-| `decay.betaWorking` | `1.0` | Beta Weibull per i ricordi `working` |
-| `decay.betaPeripheral` | `1.3` | Beta Weibull per i ricordi `peripheral` |
-| `tier.coreAccessThreshold` | `10` | Conteggio minimo richiami prima della promozione a `core` |
-| `tier.peripheralAgeDays` | `60` | Soglia di età per retrocedere i ricordi inattivi |
+| `decay.intrinsicWeight` | `0.3` | Peso di `importanza × confidenza` |
+| `decay.betaCore` | `0.8` | Beta Weibull per le memorie `core` |
+| `decay.betaWorking` | `1.0` | Beta Weibull per le memorie `working` |
+| `decay.betaPeripheral` | `1.3` | Beta Weibull per le memorie `peripheral` |
+| `tier.coreAccessThreshold` | `10` | Numero minimo di richiami prima della promozione a `core` |
+| `tier.peripheralAgeDays` | `60` | Soglia di età per declassare le memorie obsolete |
 
 </details>
 
 <details>
-<summary><strong>Rinforzo per accesso</strong></summary>
+<summary><strong>Rinforzo all'accesso</strong></summary>
 
-I ricordi richiamati frequentemente decadono più lentamente (stile ripetizione spaziata).
+Le memorie richiamate di frequente decadono più lentamente (stile spaced-repetition).
 
 Chiavi di configurazione (sotto `retrieval`):
 - `reinforcementFactor` (0-2, predefinito: `0.5`) — imposta `0` per disabilitare
-- `maxHalfLifeMultiplier` (1-10, predefinito: `3`) — limite massimo sull'emivita effettiva
+- `maxHalfLifeMultiplier` (1-10, predefinito: `3`) — limite massimo rigido sull'emivita effettiva
 
 </details>
 
@@ -637,64 +507,175 @@ Chiavi di configurazione (sotto `retrieval`):
 
 ## Comandi CLI
 
+Il binario `memory-pro` è disponibile dopo `npm run build`:
+
 ```bash
-openclaw memory-pro list [--scope global] [--category fact] [--limit 20] [--json]
-openclaw memory-pro search "query" [--scope global] [--limit 10] [--json]
-openclaw memory-pro stats [--scope global] [--json]
-openclaw memory-pro auth login [--provider openai-codex] [--model gpt-5.4] [--oauth-path /abs/path/oauth.json]
-openclaw memory-pro auth status
-openclaw memory-pro auth logout
-openclaw memory-pro delete <id>
-openclaw memory-pro delete-bulk --scope global [--before 2025-01-01] [--dry-run]
-openclaw memory-pro export [--scope global] [--output memories.json]
-openclaw memory-pro import memories.json [--scope global] [--dry-run]
-openclaw memory-pro reembed --source-db /path/to/old-db [--batch-size 32] [--skip-existing]
-openclaw memory-pro upgrade [--dry-run] [--batch-size 10] [--no-llm] [--limit N] [--scope SCOPE]
-openclaw memory-pro migrate check|run|verify [--source /path]
+npm link   # once, to expose the "memory-pro" bin globally
+memory-pro list [--scope global] [--category fact] [--limit 20] [--json]
+memory-pro search "query" [--scope global] [--limit 10] [--json]
+memory-pro stats [--scope global] [--json]
+memory-pro auth login [--provider openai-codex] [--model gpt-5.4] [--oauth-path /abs/path/oauth.json]
+memory-pro auth status
+memory-pro auth logout
+memory-pro delete <id>
+memory-pro delete-bulk --scope global [--before 2025-01-01] [--dry-run]
+memory-pro export [--scope global] [--output memories.json]
+memory-pro import memories.json [--scope global] [--dry-run]
+memory-pro reembed --source-db /path/to/old-db [--batch-size 32] [--skip-existing]
+memory-pro upgrade [--dry-run] [--batch-size 10] [--no-llm] [--limit N] [--scope SCOPE]
+memory-pro migrate check|run|verify [--source /path]
 ```
+
+All'interno di una sessione pi, la stessa superficie di gestione è disponibile come comando slash **`/memory-pro`**.
+
+> La CLI legge lo stesso file di configurazione dell'estensione (`$MEMORY_LANCEDB_PRO_CONFIG` → `~/.pi/agent/memory-lancedb-pro.json5` → `~/.pi/agent/memory-lancedb-pro.json`).
 
 Flusso di login OAuth:
 
-1. Esegui `openclaw memory-pro auth login`
-2. Se `--provider` è omesso in un terminale interattivo, la CLI mostra un selettore di provider OAuth prima di aprire il browser
-3. Il comando stampa un URL di autorizzazione e apre il browser, a meno che non sia impostato `--no-browser`
-4. Dopo il successo del callback, il comando salva il file OAuth del plugin (predefinito: `~/.openclaw/.memory-lancedb-pro/oauth.json`), crea uno snapshot della configurazione `llm` precedente con api-key per il logout, e sostituisce la configurazione `llm` del plugin con le impostazioni OAuth (`auth`, `oauthProvider`, `model`, `oauthPath`)
-5. `openclaw memory-pro auth logout` elimina quel file OAuth e ripristina la configurazione `llm` precedente con api-key quando quello snapshot esiste
+1. Esegui `memory-pro auth login`
+2. Se `--provider` viene omesso in un terminale interattivo, la CLI mostra un selettore di provider OAuth prima di aprire il browser
+3. Il comando stampa un URL di autorizzazione e apre il browser a meno che non sia impostato `--no-browser`
+4. Dopo il successo del callback, il comando salva il file OAuth del plugin (predefinito: `~/.pi/agent/.memory-lancedb-pro/oauth.json`), salva un'istantanea della precedente configurazione `llm` con api-key per il logout e sostituisce la configurazione `llm` del plugin con le impostazioni OAuth (`auth`, `oauthProvider`, `model`, `oauthPath`)
+5. `memory-pro auth logout` elimina quel file OAuth e ripristina la precedente configurazione `llm` con api-key quando quell'istantanea esiste
 
 ---
 
 ## Argomenti avanzati
 
 <details>
-<summary><strong>Se i ricordi iniettati appaiono nelle risposte</strong></summary>
+<summary><strong>Aggiornamento da una versione precedente del port</strong></summary>
+
+```bash
+# 1) Backup
+memory-pro export --scope global --output memories-backup.json
+# 2) Dry run
+memory-pro upgrade --dry-run
+# 3) Run upgrade
+memory-pro upgrade
+# 4) Verify
+memory-pro stats
+```
+
+Vedi `CHANGELOG-v1.1.0.md` per le modifiche di comportamento e le motivazioni dell'aggiornamento.
+
+**Vuoi attivare i suggerimenti di task Jina su un database esistente?**
+
+I suggerimenti di task sono due chiavi di configurazione sotto il blocco `embedding`:
+
+```json5
+{
+  embedding: {
+    model: "jina-embeddings-v5-text-small",
+    taskQuery: "retrieval.query",
+    taskPassage: "retrieval.passage"
+  }
+}
+```
+
+Interessano solo i vettori scritti *dopo* averli impostati. Le righe già presenti nel tuo archivio sono state incorporate senza suggerimento di task, quindi una query incorporata con `retrieval.query` viene confrontata con passaggi che vivono in uno spazio vettoriale diverso — ottieni silenziosamente circa la metà del beneficio.
+
+Per correggere le righe esistenti, ri-incorpora in un **nuovo database e passa a quello**. **Non** ri-incorporare sul posto: `reembed` scrive ogni riga con `table.add()` (append per id, non replace), quindi un'esecuzione sul posto — esattamente ciò che `--force` sblocca — lascia il vecchio vettore accanto al nuovo e **raddoppia ogni riga**; i tentativi ne accumulano di più. Per questo motivo `reembed` rifiuta esecuzioni sullo stesso percorso a meno che tu non lo forzi.
+
+```bash
+# 0) Make sure no pi session is writing mid-migration.
+
+# 1) Back up the whole store — a real filesystem copy of the LanceDB directory.
+#    (Do NOT rely on `memory-pro export`: it defaults to --limit 1000 and a single
+#    --scope, so it silently drops rows past 1000 and every non-global scope.)
+cp -r <your dbPath> <your dbPath>.bak
+
+# 2) In the config file, set the task hints AND point `dbPath` at a new, empty
+#    target (e.g. "<your dbPath>-v2"). A fresh target is also what lets you change
+#    `embedding.dimensions`: a new vector width can only go into a new table.
+
+# 3) Dry run — reads the source, prints the row count, writes nothing.
+memory-pro reembed --source-db <old dbPath> --dry-run
+
+# 4) Re-embed old -> new with the now-current task hints. Source != target, so each
+#    id lands exactly once. Safe to re-run with --skip-existing if interrupted.
+memory-pro reembed --source-db <old dbPath>
+
+# 5) Verify before trusting the cutover: the "imported" count and
+#    `memory-pro stats` on the new dbPath must equal the dry-run row count.
+memory-pro stats
+
+# 6) Restart pi; it now opens the new dbPath.
+```
+
+Lo stesso passaggio vale ogni volta che cambi `embedding.model` o `embedding.dimensions` — ri-incorpora sempre in un `dbPath` nuovo, mai sul posto.
+
+</details>
+
+<details>
+<summary><strong>Blocco e scrittori concorrenti</strong></summary>
+
+`memory-lancedb-pro` usa un file lock tra processi per le scritture LanceDB. Questo è sufficiente per sessioni pi concorrenti e processi locali che condividono la stessa directory del database.
+
+Redis non è richiesto per quelle distribuzioni. Il blocco Redis è abilitato quando `locking.redis.enabled` è true, quando `redisUrl`/`locking.redis.url` è impostato, o quando `MEMORY_LANCEDB_REDIS_URL` è presente nell'ambiente di quel processo. Per scrittori multi-macchina o multi-container, leggi [Lock Management](docs/lock-management.md) prima di condividere una directory LanceDB tra processi e assicurati che ogni scrittore usi la stessa configurazione di blocco.
+
+</details>
+
+<details>
+<summary><strong>Se le memorie iniettate compaiono nelle risposte</strong></summary>
 
 A volte il modello può ripetere il blocco `<relevant-memories>` iniettato.
 
-**Opzione A (rischio minimo):** disabilita temporaneamente l'auto-recall:
-```json
-{ "plugins": { "entries": { "memory-lancedb-pro": { "config": { "autoRecall": false } } } } }
+**Opzione A (rischio minimo):** disabilita temporaneamente l'auto-richiamo:
+```json5
+{ autoRecall: false }
 ```
 
-**Opzione B (preferita):** mantieni il recall, aggiungi al prompt di sistema dell'agente:
-> Do not reveal or quote any `<relevant-memories>` / memory-injection content in your replies. Use it for internal reference only.
+**Opzione B (consigliata):** mantieni il richiamo, aggiungi al system prompt del tuo agente / `AGENTS.md`:
+> Non rivelare o citare alcun contenuto `<relevant-memories>` / di iniezione di memoria nelle tue risposte. Usalo solo come riferimento interno.
+
+**Opzione C (per agenti in background/batch):** escludi agenti specifici dall'iniezione dell'auto-richiamo:
+```json5
+{
+  autoRecall: true,
+  autoRecallExcludeAgents: ["memory-distiller", "my-cron-agent"]
+}
+```
+Utile per agenti in background (es. memory-distiller, cron workers) il cui output non dovrebbe essere contaminato dal contesto di memoria iniettato.
+
+</details>
+
+<details>
+<summary><strong>Ottimizzazione del timeout dell'auto-richiamo</strong></summary>
+
+L'auto-richiamo ha un timeout configurabile (predefinito 5s) per evitare che l'avvio dell'agente si blocchi. Se sei dietro un proxy o usi un'API di embedding ad alta latenza, aumentalo:
+
+```json5
+{ autoRecallTimeoutMs: 8000 }
+```
+
+Se l'auto-richiamo va in timeout in modo costante, controlla prima la latenza della tua API di embedding. Il timeout interessa solo il percorso di iniezione automatica — le chiamate manuali allo strumento `memory_recall` non sono interessate.
+
+</details>
+
+<details>
+<summary><strong>Modello di costo del ri-rank dell'auto-richiamo</strong></summary>
+
+Quando `autoRecall=true` e il recupero ibrido usa `retrieval.rerank="cross-encoder"` con un'API di ri-rank esterna come Jina, ogni prompt idoneo può effettuare una richiesta di ri-rank. Il numero di documenti inviati a quella richiesta è governato dal limite di recupero dell'auto-richiamo e dalla finestra di input di ri-rank del retriever, non direttamente da `retrieval.candidatePoolSize` o dal tetto di iniezione finale `autoRecallMaxItems`.
+
+Ad esempio, con `autoRecallMaxItems: 3`, l'auto-richiamo chiede 6 elementi al recupero e il recupero ibrido può inviare fino a 12 candidati al ri-ranker esterno prima di iniettare al massimo 3 memorie. Per ridurre l'uso del ri-rank esterno, abbassa `autoRecallMaxItems` o `maxRecallPerTurn`, passa `retrieval.rerank` a `"lightweight"` o `"none"`, aumenta `autoRecallMinLength`, oppure tieni l'auto-richiamo disabilitato e usa `memory_recall` manuale dove appropriato.
+
+I log di avvio avvisano quando auto-richiamo più ri-rank cross-encoder ibrido possono inviare più elementi al ri-ranker di quanti ne verranno iniettati. Le statistiche di debug dell'auto-richiamo includono i valori effettivi di `rerankInput`, `rerankInputLimit`, `retrieveLimit`, `rerank`, `rerankProvider` e il `retrievalCandidatePoolSize` configurato.
 
 </details>
 
 <details>
 <summary><strong>Memoria di sessione</strong></summary>
 
-- Si attiva con il comando `/new` — salva il riepilogo della sessione precedente in LanceDB
-- Disabilitata per impostazione predefinita (OpenClaw ha già la persistenza nativa delle sessioni in `.jsonl`)
+- Attivata dagli eventi di nuova sessione — salva il riepilogo della sessione precedente in LanceDB
+- Disabilitata per impostazione predefinita (pi persiste già le trascrizioni di sessione `.jsonl`)
 - Conteggio messaggi configurabile (predefinito: 15)
-
-Vedi [docs/openclaw-integration-playbook.md](docs/openclaw-integration-playbook.md) per le modalità di distribuzione e la verifica di `/new`.
 
 </details>
 
 <details>
-<summary><strong>Comandi slash personalizzati (ad es. /lesson)</strong></summary>
+<summary><strong>Comandi slash personalizzati (es. /lesson)</strong></summary>
 
-Aggiungi al tuo `CLAUDE.md`, `AGENTS.md` o prompt di sistema:
+Aggiungi al tuo `AGENTS.md` o al system prompt:
 
 ```markdown
 ## /lesson command
@@ -712,9 +693,9 @@ When the user sends `/remember <content>`:
 </details>
 
 <details>
-<summary><strong>Regole d'oro per agenti IA</strong></summary>
+<summary><strong>Regole di ferro per agenti AI</strong></summary>
 
-> Copia il blocco seguente nel tuo `AGENTS.md` in modo che il tuo agente applichi queste regole automaticamente.
+> Copia il blocco qui sotto nel tuo `AGENTS.md` così il tuo agente applica queste regole automaticamente.
 
 ```markdown
 ## Rule 1 — Dual-layer memory storage
@@ -733,8 +714,8 @@ On ANY tool failure, ALWAYS memory_recall with relevant keywords BEFORE retrying
 ## Rule 4 — Confirm target codebase
 Confirm you are editing memory-lancedb-pro vs built-in memory-lancedb before changes.
 
-## Rule 5 — Clear jiti cache after plugin code changes
-After modifying .ts files under plugins/, MUST run rm -rf /tmp/jiti/ BEFORE openclaw gateway restart.
+## Rule 5 — Clear jiti cache after extension code changes
+After modifying .ts files under the extension, MUST run rm -rf /tmp/jiti/ BEFORE restarting pi.
 ```
 
 </details>
@@ -747,28 +728,155 @@ Tabella LanceDB `memories`:
 | Campo | Tipo | Descrizione |
 | --- | --- | --- |
 | `id` | string (UUID) | Chiave primaria |
-| `text` | string | Testo del ricordo (indicizzato FTS) |
+| `text` | string | Testo della memoria (indicizzato FTS) |
 | `vector` | float[] | Vettore di embedding |
 | `category` | string | Categoria di archiviazione: `preference` / `fact` / `decision` / `entity` / `reflection` / `other` |
-| `scope` | string | Identificatore scope (ad es. `global`, `agent:main`) |
+| `scope` | string | Identificatore dello scope (es. `global`, `agent:main`) |
 | `importance` | float | Punteggio di importanza 0-1 |
 | `timestamp` | int64 | Timestamp di creazione (ms) |
 | `metadata` | string (JSON) | Metadati estesi |
 
-Chiavi `metadata` comuni nella v1.1.0: `l0_abstract`, `l1_overview`, `l2_content`, `memory_category`, `tier`, `access_count`, `confidence`, `last_accessed_at`
+Chiavi `metadata` comuni in v1.1.0: `l0_abstract`, `l1_overview`, `l2_content`, `memory_category`, `tier`, `access_count`, `confidence`, `last_accessed_at`
 
-> **Nota sulle categorie:** Il campo `category` di primo livello usa 6 categorie di archiviazione. Le 6 etichette semantiche dell'Estrazione Intelligente (`profile` / `preferences` / `entities` / `events` / `cases` / `patterns`) sono memorizzate in `metadata.memory_category`.
+> **Nota sulle categorie:** il campo `category` di primo livello usa 6 categorie di archiviazione. Le etichette semantiche delle 6 categorie dell'Estrazione intelligente (`profile` / `preferences` / `entities` / `events` / `cases` / `patterns`) sono archiviate in `metadata.memory_category`.
 
 </details>
 
 <details>
 <summary><strong>Risoluzione dei problemi</strong></summary>
 
-### "Cannot mix BigInt and other types" (LanceDB / Apache Arrow)
+**L'estensione non si carica / "no config file found"**
 
-Con LanceDB 0.26+, alcune colonne numeriche potrebbero essere restituite come `BigInt`. Aggiorna a **memory-lancedb-pro >= 1.0.14** — questo plugin ora converte i valori usando `Number(...)` prima delle operazioni aritmetiche.
+Crea `~/.pi/agent/memory-lancedb-pro.json5` o imposta `$MEMORY_LANCEDB_PRO_CONFIG`. L'estensione stampa un avviso con la forma prevista e resta disabilitata — pi continua a funzionare.
+
+**Init dell'estrazione intelligente fallito**
+
+Controlla che `llm.apiKey` / `${ENV_VAR}` sia impostato; il plugin ripiega sull'estrazione regex invece di fallire.
+
+**"Cannot mix BigInt and other types" (LanceDB / Apache Arrow)**
+
+Su LanceDB 0.26+, alcune colonne numeriche possono essere restituite come `BigInt`. Aggiorna a **memory-lancedb-pro >= 1.0.14** — questo plugin ora converte i valori usando `Number(...)` prima dell'aritmetica.
 
 </details>
+
+---
+
+## Architettura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│        pi-adapter/index.ts (Pi entry point)                 │
+│  config file → shim (pi events → OpenClaw hooks) → register │
+└────────┬────────────────────────────────────────────────────┘
+         │  pi-adapter/shim.ts adapts:
+         │    pi.on(event)        → api.on / api.registerHook
+         │    pi.registerTool     → api.registerTool
+         │    pi.registerCommand  → api.registerCli (/memory-pro)
+         │    pi CLI subprocess   → api.runtime.agent.runEmbeddedPiAgent
+         ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   index.ts (Plugin Core, unchanged)         │
+│  Plugin Registration · Config Parsing · Lifecycle Hooks     │
+└────────┬──────────┬──────────┬──────────┬───────────────────┘
+         │          │          │          │
+    ┌────▼───┐ ┌────▼───┐ ┌───▼────┐ ┌──▼──────────┐
+    │ store  │ │embedder│ │retriever│ │   scopes    │
+    │ .ts    │ │ .ts    │ │ .ts    │ │    .ts      │
+    └────────┘ └────────┘ └────────┘ └─────────────┘
+         │                     │
+    ┌────▼───┐           ┌─────▼──────────┐
+    │migrate │           │noise-filter.ts │
+    │ .ts    │           │adaptive-       │
+    └────────┘           │retrieval.ts    │
+                         └────────────────┘
+    ┌─────────────┐   ┌──────────┐
+    │  tools.ts   │   │  cli.ts  │
+    │ (Agent API) │   │ (CLI)    │
+    └─────────────┘   └──────────┘
+```
+
+> Per un'analisi approfondita dell'architettura completa, vedi [docs/memory_architecture_analysis.md](docs/memory_architecture_analysis.md).
+
+<details>
+<summary><strong>Riferimento file (clicca per espandere)</strong></summary>
+
+| File | Scopo |
+| --- | --- |
+| `pi-adapter/index.ts` | Punto di ingresso di pi: carica il file di configurazione, costruisce lo shim dell'API OpenClaw, registra il nucleo del plugin |
+| `pi-adapter/shim.ts` | Mappa gli eventi / strumenti / comandi del ciclo di vita di pi sull'API del plugin OpenClaw |
+| `pi-adapter/config.ts` | Caricamento del file di configurazione (`$MEMORY_LANCEDB_PRO_CONFIG` → `~/.pi/agent/memory-lancedb-pro.json5` → `.json`) |
+| `pi-adapter/paths.ts` | Risoluzione dei percorsi di pi (`~/.pi/agent`, override di ambiente) |
+| `pi-adapter/pi-runner.ts` | Runner di sotto-agenti incorporato tramite `pi --mode json --no-tools ...` |
+| `pi-adapter/cli-main.ts` | Punto di ingresso CLI `memory-pro` autonomo |
+| `index.ts` | Punto di ingresso del nucleo del plugin: parsing della configurazione, hook del ciclo di vita, registrazione della capacità di memoria |
+| `src/store.ts` | Livello di archiviazione LanceDB. Creazione tabelle / indicizzazione FTS / ricerca vettoriale / ricerca BM25 / CRUD |
+| `src/embedder.ts` | Astrazione degli embedding. Compatibile con qualsiasi provider API compatibile con OpenAI |
+| `src/retriever.ts` | Motore di recupero ibrido. Vettore + BM25 → Fusione ibrida → Ri-rank → Decadimento del ciclo di vita → Filtro |
+| `src/scopes.ts` | Controllo degli accessi multi-scope |
+| `src/tools.ts` | Definizioni degli strumenti dell'agente: `memory_recall`, `memory_store`, `memory_forget`, `memory_update` + strumenti di gestione |
+| `src/noise-filter.ts` | Filtra i rifiuti dell'agente, le meta-domande, i saluti e i contenuti di bassa qualità |
+| `src/adaptive-retrieval.ts` | Determina se una query ha bisogno del recupero di memoria |
+| `src/migrate.ts` | Migrazione dal `memory-lancedb` integrato a Pro |
+| `src/smart-extractor.ts` | Estrazione LLM in 6 categorie con archiviazione a livelli L0/L1/L2 e deduplicazione a due stadi |
+| `src/decay-engine.ts` | Modello di decadimento esponenziale allungato Weibull |
+| `src/tier-manager.ts` | Promozione/declassamento a tre livelli: Peripheral ↔ Working ↔ Core |
+
+</details>
+
+---
+
+## Appendice upstream OpenClaw
+
+Questo repository è un port. Il progetto upstream è **[CortexReach/memory-lancedb-pro](https://github.com/CortexReach/memory-lancedb-pro)** — un plugin OpenClaw. Tutto ciò che segue documenta l'uso upstream di OpenClaw; gli utenti pi non ne hanno bisogno.
+
+### Cosa è cambiato (differenze del port)
+
+| Area | OpenClaw (upstream) | Pi (questo port) |
+|---|---|---|
+| Avvio dell'estensione | `openclaw.plugin.json` / `openclaw.extensions` | `pi-adapter/index.ts` → compilato in `dist/pi-adapter/index.js`, dichiarato tramite `pi.extensions` in `package.json` |
+| File di configurazione | Voce plugin in `openclaw.json` | `~/.pi/agent/memory-lancedb-pro.json5` (o `$MEMORY_LANCEDB_PRO_CONFIG`) — stessa forma del documento |
+| Directory base di dati e sessioni | `~/.openclaw/...` | `~/.pi/agent/...` (override con `PI_CODING_AGENT_DIR` / `PI_AGENT_DIR`) |
+| CLI | `openclaw memory-pro …` | Binario autonomo: `memory-pro …` (compilato da `pi-adapter/cli-main.ts`) |
+| Comando slash | CLI registrata tramite `openclaw` | `pi.registerCommand("/memory-pro", ...)` tramite lo shim |
+| Runner di sotto-agenti incorporato | API runtime OpenClaw | Richiama `pi --mode json --no-tools …` (`pi-adapter/pi-runner.ts`) |
+| Struttura delle sessioni | `~/.openclaw/agents/<id>/sessions/*.jsonl` | `~/.pi/agent/sessions/--<cwd>--/*.jsonl` |
+| Versione | `1.1.0-beta.11` | `1.1.0-beta.11-pi.1` |
+
+Gli eventi del ciclo di vita sono mappati dagli eventi di pi agli hook OpenClaw tramite `pi-adapter/shim.ts`: `input`, `session_start`, `before_agent_start`, `agent_end`, `session_shutdown`, `tool_result`, `session_before_switch`, `session_before_fork`. Gli strumenti del plugin (`memory_store`, `memory_recall`, …) e il comando slash `/memory-pro` si registrano attraverso lo shim senza modifiche.
+
+### Avvio rapido upstream (solo OpenClaw)
+
+```bash
+# via OpenClaw CLI (recommended)
+openclaw plugins install memory-lancedb-pro@beta
+
+# or via npm
+npm i memory-lancedb-pro@beta
+# then add the plugin's install directory as an absolute path in plugins.load.paths
+```
+
+```json
+{
+  "plugins": {
+    "slots": { "memory": "memory-lancedb-pro" },
+    "entries": {
+      "memory-lancedb-pro": {
+        "enabled": true,
+        "config": { "autoCapture": true, "autoRecall": true, "smartExtraction": true }
+      }
+    }
+  }
+}
+```
+
+I comandi upstream usano il prefisso `openclaw memory-pro ...`. Vedi il [README upstream](https://github.com/CortexReach/memory-lancedb-pro) per la documentazione OpenClaw completa.
+
+### Ecosistema upstream
+
+- **[Setup script](https://github.com/CortexReach/toolbox/tree/main/memory-lancedb-pro-setup)** — installazione/aggiornamento/riparazione in un clic per distribuzioni OpenClaw (scrive `openclaw.json`)
+- **[AI-guided config skill](https://github.com/CortexReach/memory-lancedb-pro-skill)** — per agenti Claude Code / OpenClaw
+- **Video tutorial** — [YouTube](https://youtu.be/MtukF1C8epQ) · [Bilibili](https://www.bilibili.com/video/BV1zUf2BGEgn/)
+- **Storia delle stelle** — [star-history.com](https://star-history.com/#CortexReach/memory-lancedb-pro&Date)
 
 ---
 
@@ -776,10 +884,21 @@ Con LanceDB 0.26+, alcune colonne numeriche potrebbero essere restituite come `B
 
 | Documento | Descrizione |
 | --- | --- |
-| [Playbook di integrazione OpenClaw](docs/openclaw-integration-playbook.md) | Modalità di distribuzione, verifica, matrice di regressione |
-| [Analisi dell'architettura della memoria](docs/memory_architecture_analysis.md) | Analisi approfondita dell'architettura completa |
-| [CHANGELOG v1.1.0](docs/CHANGELOG-v1.1.0.md) | Modifiche comportamentali v1.1.0 e motivazioni per l'upgrade |
-| [Chunking contesto lungo](docs/long-context-chunking.md) | Strategia di chunking per documenti lunghi |
+| [Memory Architecture Analysis](docs/memory_architecture_analysis.md) | Analisi approfondita dell'architettura completa |
+| [CHANGELOG v1.1.0](docs/CHANGELOG-v1.1.0.md) | Modifiche di comportamento della v1.1.0 e motivazioni dell'aggiornamento |
+| [Release Checklist](docs/release-checklist.md) | Preflight del pacchetto, dry run della pubblicazione e smoke check post-pubblicazione |
+| [Long-Context Chunking](docs/long-context-chunking.md) | Strategia di chunking per documenti lunghi |
+| [Lock Management](docs/lock-management.md) | Dettagli sul blocco multi-scrittore (Redis) |
+
+## Test
+
+```bash
+npm test                       # full unit/e2e suite
+node scripts/run-ci-tests.mjs --all   # full CI manifest
+npm run test:pi-adapter        # pi adapter smoke test (mock pi API)
+```
+
+Tutti i test upstream sono conservati; `test/pi-adapter-smoke.test.mjs` e `test:pi-adapter` sono nuovi.
 
 ---
 
@@ -787,11 +906,11 @@ Con LanceDB 0.26+, alcune colonne numeriche potrebbero essere restituite come `B
 
 > Stato: Beta — disponibile tramite `npm i memory-lancedb-pro@beta`. Gli utenti stabili su `latest` non sono interessati.
 
-| Funzionalità | Descrizione |
+| Funzione | Descrizione |
 |---------|-------------|
-| **Estrazione intelligente** | Estrazione LLM in 6 categorie con metadati L0/L1/L2. Fallback su regex se disabilitato. |
-| **Punteggio ciclo di vita** | Decadimento Weibull integrato nella ricerca — i ricordi frequenti e importanti si posizionano più in alto. |
-| **Gestione livelli** | Sistema a tre livelli (Core → Working → Peripheral) con promozione/retrocessione automatica. |
+| **Estrazione intelligente** | Estrazione LLM in 6 categorie con metadati L0/L1/L2. Ripiega sulle regex quando disabilitata. |
+| **Scoring del ciclo di vita** | Decadimento Weibull integrato nel recupero — le memorie ad alta frequenza e alta importanza ottengono un ranking più alto. |
+| **Gestione dei livelli** | Sistema a tre livelli (Core → Working → Peripheral) con promozione/declassamento automatici. |
 
 Feedback: [GitHub Issues](https://github.com/CortexReach/memory-lancedb-pro/issues) · Ripristina: `npm i memory-lancedb-pro@latest`
 
@@ -802,12 +921,14 @@ Feedback: [GitHub Issues](https://github.com/CortexReach/memory-lancedb-pro/issu
 | Pacchetto | Scopo |
 | --- | --- |
 | `@lancedb/lancedb` ≥0.26.2 | Database vettoriale (ANN + FTS) |
-| `openai` ≥6.21.0 | Client API Embedding compatibile OpenAI |
+| `openai` ≥6.21.0 | Client API di embedding compatibile con OpenAI |
 | `@sinclair/typebox` 0.34.48 | Definizioni di tipo JSON Schema |
 
 ---
 
-## Contributors
+## Contributori
+
+Manutentori e contributori upstream (vedi l'[elenco completo](https://github.com/CortexReach/memory-lancedb-pro/graphs/contributors)):
 
 <p>
 <a href="https://github.com/win4r"><img src="https://avatars.githubusercontent.com/u/42172631?v=4" width="48" height="48" alt="@win4r" /></a>
@@ -821,24 +942,6 @@ Feedback: [GitHub Issues](https://github.com/CortexReach/memory-lancedb-pro/issu
 <a href="https://github.com/chenjiyong"><img src="https://avatars.githubusercontent.com/u/8199522?v=4" width="48" height="48" alt="@chenjiyong" /></a>
 </p>
 
-Full list: [Contributors](https://github.com/CortexReach/memory-lancedb-pro/graphs/contributors)
-
-## Star History
-
-<a href="https://star-history.com/#CortexReach/memory-lancedb-pro&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&theme=dark&transparent=true" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&transparent=true" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=CortexReach/memory-lancedb-pro&type=Date&transparent=true" />
-  </picture>
-</a>
-
 ## Licenza
 
 MIT
-
----
-
-## Il mio QR Code WeChat
-
-<img src="https://github.com/win4r/AISuperDomain/assets/42172631/7568cf78-c8ba-4182-aa96-d524d903f2bc" width="214.8" height="291">
