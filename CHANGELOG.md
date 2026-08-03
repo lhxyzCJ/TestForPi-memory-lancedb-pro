@@ -9,6 +9,9 @@
 - Embedded reflection/dreaming sub-agents run through the `pi` CLI (`--mode json -p`) instead of the OpenClaw embedded runtime.
 - Management CLI now ships as a standalone `memory-pro` bin and as the `/memory-pro` pi slash command.
 - The pi package declares its runtime entry via `pi.extensions` (`openclaw.plugin.json` is kept in the repo but no longer drives packaging).
+- Fix: restore `@lancedb/lancedb-darwin-x64` optional entry in `package-lock.json` so `npm ci` passes on npm 11 (node ≥ 26).
+- CI: include `test/pi-adapter-smoke.test.mjs` in the CI test manifest (pi adapter layer was previously untested in CI).
+- Docs: add pi runtime requirements (default provider for embedded sub-agents, embedding endpoint, LLM key, upgrade path) to all READMEs.
 
 ## 1.1.0-beta.11 (OpenClaw 2026.5 runtime compatibility)
 

@@ -155,6 +155,17 @@ memory-lancedb-pro@...: plugin registered (db: /root/.pi-agent/memory/lancedb-pr
 
 ---
 
+## 実行時要件（pi）
+
+以下の要件は pi ホスト由来で、`memory-lancedb-pro.json5` では設定されません：
+
+1. **デフォルトプロバイダー** — 埋め込み型のリフレクション/ドリーミングサブエージェントは `--provider`/`--model` なしで `pi` CLI から起動され、ホストのデフォルトを継承します。`~/.pi/agent/settings.json` で `defaultProvider`/`defaultModel` を設定してください（例: `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`）。設定しないとサブエージェントが壊れたり意図しないプロバイダーにフォールバックする可能性があります。
+2. **埋め込みエンドポイント** — 埋め込み API が到達可能である必要があります（例: セッション前に Ollama を起動）。到達できない場合、スマート抽出は静かに regex フォールバックへ降格します。
+3. **LLM API キー** — スマート抽出には有効な LLM キー（`llm.apiKey`、例: `"${OPENCODE_API_KEY}"`）が必要です。ない場合、抽出は regex キャプチャにフォールバックします。
+4. **アップグレード方法** — pi は `settings.json`（`extensions`）に記録された絶対パスから拡張機能を読み込みます。このリポジトリを更新したら `pi install` を再実行（またはインストール済みコピーを置換）してください。実行しないと pi は古いビルドを読み込み続けます。
+
+**アップストリームとの既知の差:** アップストリームのバッチユーティリティ受理モード（#941、`utilityMode: "batch"`、`utilityVetoThreshold`）は移植されていません。`utilityMode` は `"standalone" | "off"` のみをサポートします。
+
 ## ⚠️ メモリ・アーキテクチャ（重要）
 
 この拡張機能は、1 つのメモリ能力を 2 つの連携するストアとして公開します:

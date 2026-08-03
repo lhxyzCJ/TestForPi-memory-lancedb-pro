@@ -155,6 +155,17 @@ memory-lancedb-pro@...: plugin registered (db: /root/.pi-agent/memory/lancedb-pr
 
 ---
 
+## 런타임 요구 사항(pi)
+
+다음 요구 사항은 pi 호스트에서 비롯되며 `memory-lancedb-pro.json5`에 구성되지 않습니다:
+
+1. **기본 제공자** — 임베디드 반성/드리밍 하위 에이전트는 `--provider`/`--model` 없이 `pi` CLI로 실행되며 호스트 기본값을 상속합니다. `~/.pi/agent/settings.json`에서 `defaultProvider`/`defaultModel`을 설정하세요(예: `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`). 설정하지 않으면 하위 에이전트가 손상되었거나 의도하지 않은 제공자로 대체될 수 있습니다.
+2. **임베딩 엔드포인트** — 임베딩 API에 연결할 수 있어야 합니다(예: 세션 전에 Ollama 시작). 연결할 수 없으면 스마트 추출이 조용히 regex 폴백으로 강등됩니다.
+3. **LLM API 키** — 스마트 추출에는 유효한 LLM 키(`llm.apiKey`, 예: `"${OPENCODE_API_KEY}"`)가 필요합니다. 없으면 추출이 regex 캡처로 폴백됩니다.
+4. **업그레이드 경로** — pi는 `settings.json`(`extensions`)에 기록된 절대 경로에서 확장을 로드합니다. 이 저장소를 업데이트한 후 `pi install`을 다시 실행(또는 설치된 복사본 교체)하세요. 그렇지 않으면 pi는 이전 빌드를 계속 로드합니다.
+
+**업스트림과의 알려진 차이:** 업스트림의 배치 유틸리티 승인 모드(#941, `utilityMode: "batch"`, `utilityVetoThreshold`)는 포팅되지 않았습니다. `utilityMode`는 `"standalone" | "off"`만 지원합니다.
+
 ## ⚠️ 메모리 아키텍처(중요)
 
 확장 기능은 하나의 메모리 기능을 두 개의 협력하는 스토어로 노출합니다:

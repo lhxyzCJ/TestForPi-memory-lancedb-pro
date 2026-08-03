@@ -155,6 +155,17 @@ Depois peça ao seu agente para armazenar e recuperar algo:
 
 ---
 
+## Requisitos de execução (pi)
+
+Os seguintes requisitos vêm do host pi e não são configurados em `memory-lancedb-pro.json5`:
+
+1. **Provedor padrão** — Subagentes de reflexão/dreaming são lançados via CLI `pi` sem `--provider`/`--model` e herdam o padrão do host. Defina `defaultProvider`/`defaultModel` em `~/.pi/agent/settings.json` (ex.: `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`), caso contrário os subagentes podem cair em um provedor quebrado ou não intencional.
+2. **Endpoint de embeddings** — A API de embeddings deve estar acessível (ex.: inicie o Ollama antes de uma sessão); um endpoint inacessível degrada silenciosamente a extração inteligente para o fallback regex.
+3. **Chave de API do LLM** — A extração inteligente precisa de uma chave LLM válida (`llm.apiKey`, ex.: `"${OPENCODE_API_KEY}"`); sem ela, a extração recorre à captura regex.
+4. **Caminho de atualização** — O pi carrega a extensão do caminho absoluto registrado em `settings.json` (`extensions`). Após atualizar este repositório, execute `pi install` novamente (ou substitua a cópia instalada); caso contrário, o pi continuará carregando o build antigo.
+
+**Lacuna conhecida vs. upstream:** o modo de admissão batch-utility do upstream (#941, `utilityMode: "batch"`, `utilityVetoThreshold`) não foi portado; `utilityMode` suporta apenas `"standalone" | "off"`.
+
 ## ⚠️ Arquitetura de Memória (Importante)
 
 A extensão expõe uma capacidade de memória com dois armazenamentos coordenados:

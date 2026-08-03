@@ -155,6 +155,17 @@ Bitte deinen Agenten dann, etwas zu speichern und abzurufen:
 
 ---
 
+## Laufzeitanforderungen (pi)
+
+Die folgenden Anforderungen stammen von der pi-Hostumgebung und werden nicht in `memory-lancedb-pro.json5` konfiguriert:
+
+1. **Standard-Provider** — Eingebettete Reflexions-/Traum-Subagenten werden über die `pi`-CLI ohne `--provider`/`--model` gestartet und übernehmen den Host-Standard. Setzen Sie `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json` (z. B. `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`), sonst können Subagenten auf einen defekten oder unbeabsichtigten Provider zurückfallen.
+2. **Embedding-Endpunkt** — Die Embedding-API muss erreichbar sein (z. B. Ollama vor einer Sitzung starten); ein nicht erreichbarer Endpunkt degradiert die intelligente Extraktion still auf Regex-Fallback.
+3. **LLM-API-Schlüssel** — Die intelligente Extraktion benötigt einen gültigen LLM-Schlüssel (`llm.apiKey`, z. B. `"${OPENCODE_API_KEY}"`); ohne ihn fällt die Extraktion auf Regex-Erfassung zurück.
+4. **Upgrade-Pfad** — pi lädt die Erweiterung vom in `settings.json` (`extensions`) aufgezeichneten absoluten Pfad. Nach einem Update dieses Repositories `pi install` erneut ausführen (oder die installierte Kopie ersetzen), sonst lädt pi weiterhin den alten Build.
+
+**Bekannte Lücke gegenüber Upstream:** Der Batch-Utility-Zulassungsmodus von Upstream (#941, `utilityMode: "batch"`, `utilityVetoThreshold`) ist nicht portiert; `utilityMode` unterstützt nur `"standalone" | "off"`.
+
 ## ⚠️ Speicher-Architektur (Wichtig)
 
 Die Erweiterung stellt eine Speicherfunktion mit zwei koordinierten Speichern bereit:

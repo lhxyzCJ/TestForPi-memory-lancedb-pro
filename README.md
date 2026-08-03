@@ -155,6 +155,17 @@ Then ask your agent to store and recall something:
 
 ---
 
+## Runtime Requirements (pi)
+
+The extension inherits a few host requirements that are not set in `memory-lancedb-pro.json5`:
+
+1. **Default provider** — embedded reflection/dreaming sub-agents are spawned through the `pi` CLI without `--provider`/`--model` and inherit the host default. Set `defaultProvider`/`defaultModel` in `~/.pi/agent/settings.json` (e.g. `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`), otherwise sub-agents may fall back to a broken or unintended provider.
+2. **Embedding endpoint** — the embedding API must be reachable (e.g. start Ollama before a session); an unreachable endpoint silently degrades smart extraction to regex fallback.
+3. **LLM API key** — smart extraction needs a valid LLM key (`llm.apiKey`, e.g. `"${OPENCODE_API_KEY}"`); without it, extraction falls back to regex capture.
+4. **Upgrade path** — pi loads the extension from the absolute path recorded in `settings.json` (`extensions`). After updating this repository, re-run `pi install` (or replace the installed copy) or pi keeps loading the old build.
+
+**Known gap vs upstream:** the upstream batch-utility admission mode (#941, `utilityMode: "batch"`, `utilityVetoThreshold`) is not ported; `utilityMode` supports only `"standalone" | "off"`.
+
 ## ⚠️ Memory Architecture (Important)
 
 The extension exposes one memory capability with two coordinated stores:

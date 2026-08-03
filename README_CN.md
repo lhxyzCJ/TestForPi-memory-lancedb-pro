@@ -155,6 +155,17 @@ memory-lancedb-pro@...: plugin registered (db: /root/.pi-agent/memory/lancedb-pr
 
 ---
 
+## 运行时要求（pi）
+
+以下要求来自 pi 宿主环境，不在 `memory-lancedb-pro.json5` 中配置：
+
+1. **默认 provider** — 嵌入式反思/梦境子代理通过 `pi` CLI 生成，不带 `--provider`/`--model`，继承宿主默认值。请在 `~/.pi/agent/settings.json` 中设置 `defaultProvider`/`defaultModel`（例如 `"defaultProvider": "opencode-go", "defaultModel": "deepseek-v4-flash"`），否则子代理可能落到失效或非预期的 provider。
+2. **嵌入端点** — 嵌入 API 必须可达（例如会话前启动 Ollama）；端点不可达会静默降级智能提取为 regex 兜底。
+3. **LLM API key** — 智能提取需要有效的 LLM key（`llm.apiKey`，例如 `"${OPENCODE_API_KEY}"`）；缺失时提取降级为 regex 捕获。
+4. **升级路径** — pi 从 `settings.json`（`extensions`）记录的绝对路径加载扩展。更新本仓库后需重新执行 `pi install`（或替换已安装副本），否则 pi 仍加载旧构建。
+
+**与上游的已知差距：** 上游的 batch-utility 准入模式（#941，`utilityMode: "batch"`、`utilityVetoThreshold`）未移植；`utilityMode` 仅支持 `"standalone" | "off"`。
+
 ## ⚠️ 记忆架构（重要）
 
 该扩展暴露一个记忆能力，由两个协同存储组成：
