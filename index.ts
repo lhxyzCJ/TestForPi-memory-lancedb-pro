@@ -5832,6 +5832,7 @@ const memoryLanceDBProPlugin = {
     // ========================================================================
 
     let backupTimer: ReturnType<typeof setInterval> | null = null;
+    let initialBackupTimer: ReturnType<typeof setTimeout> | null = null;
     const BACKUP_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
     let storageMaintenanceInitialTimer: ReturnType<typeof setTimeout> | null = null;
     let storageMaintenanceTimer: ReturnType<typeof setInterval> | null = null;
@@ -6130,7 +6131,8 @@ const memoryLanceDBProPlugin = {
         }, 5_000);
 
         // Run initial backup after a short delay, then schedule daily
-        setTimeout(() => void runBackup(), 60_000); // 1 min after start
+        initialBackupTimer = setTimeout(() => void runBackup(), 60_000);
+        initialBackupTimer.unref?.(); // 不撑事件循环:单次进程(pi CLI)退出不再白等 60s
         backupTimer = setInterval(() => void runBackup(), BACKUP_INTERVAL_MS);
 
         if (storageAutoCleanup?.enabled === true) {
@@ -6163,6 +6165,10 @@ const memoryLanceDBProPlugin = {
         if (backupTimer) {
           clearInterval(backupTimer);
           backupTimer = null;
+        }
+        if (initialBackupTimer) {
+          clearTimeout(initialBackupTimer);
+          initialBackupTimer = null;
         }
         if (storageMaintenanceInitialTimer) {
           clearTimeout(storageMaintenanceInitialTimer);
