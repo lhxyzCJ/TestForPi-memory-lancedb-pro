@@ -2512,9 +2512,49 @@ const memoryLanceDBProPlugin = {
                 const raw = typeof event.content === "string" ? event.content.trim() : "";
                 // Strip leading bot mentions (@BotName or <@id>) so gating sees the
                 // actual user intent, not the mention prefix.
-                const text = raw.replace(/^(?:@\S+\s*|<@!?\d+>\s*)+/, "").trim();
+                const text = raw.replace(/^(?:@\S+\s*|<@!?\d+>\s+)+/, "").trim();
                 if (text)
                     lastRawUserMessage.set(cacheKey, text);
+                if (text)
+                    pushRecentUserText(cacheKey, text);
+            });
+            // 最近一轮对话:缓存上一轮助手回复,使 recall query = 用户消息 + 迟菓回复,
+            // 迟菓自己的承诺/立场也能参与检索匹配(跨 /new 存活的关键)。
+            const lastAssistantReply = new Map();
+            const recentUserTexts = new Map();
+            const RECENT_RING_MAX = 3;
+            const pushRecentUserText = (key, text) => {
+                const ring = recentUserTexts.get(key) ?? [];
+                ring.push(text);
+                if (ring.length > RECENT_RING_MAX)
+                    ring.shift();
+                recentUserTexts.set(key, ring);
+            };
+            /** 保守跳过:query 与最近 RECENT_RING_MAX 条用户消息互为子串才跳(话题已在当前上下文)。
+             *  仅子串级,不做语义判断——避免"重复话题但记忆已更新"的误伤。 */
+            const shouldSkipByRecentContext = (query, key) => {
+                const ring = recentUserTexts.get(key) ?? [];
+                if (ring.length === 0)
+                    return false;
+                const q = query.trim();
+                if (q.length < 6)
+                    return false;
+                return ring.some((t) => (t.length >= q.length && t.includes(q)) || (q.length >= t.length && q.includes(t)));
+            };
+            api.on("agent_end", (event, ctx) => {
+                const cacheKey = ctx?.channelId || ctx?.conversationId || "default";
+                for (const m of event?.messages ?? []) {
+                    if (m?.role === "assistant" && Array.isArray(m.content)) {
+                        const text = m.content
+                            .filter((c) => c?.type === "text")
+                            .map((c) => c.text ?? "")
+                            .join("\n")
+                            .trim();
+                        if (text)
+                            lastAssistantReply.set(cacheKey, text);
+                        break;
+                    }
+                }
             });
             const AUTO_RECALL_TIMEOUT_MS = parsePositiveInt(config.autoRecallTimeoutMs) ?? 5_000; // configurable; default raised from 3s to 5s for remote embedding APIs behind proxies
             api.on("before_prompt_build", async (event, ctx) => {
@@ -2602,6 +2642,11 @@ const memoryLanceDBProPlugin = {
                     // Auto-recall only needs the user's intent, not full attachment text.
                     const MAX_RECALL_QUERY_LENGTH = config.autoRecallMaxQueryLength ?? 2_000;
                     let recallQuery = lastRawUserMessage.get(cacheKey) || event.prompt;
+                    if (shouldSkipByRecentContext(recallQuery, cacheKey))
+                        return;
+                    const lastReply = lastAssistantReply.get(cacheKey);
+                    if (lastReply)
+                        recallQuery = `${recallQuery}\n${lastReply}`;
                     if (recallQuery.length > MAX_RECALL_QUERY_LENGTH) {
                         const originalLength = recallQuery.length;
                         recallQuery = recallQuery.slice(0, MAX_RECALL_QUERY_LENGTH);
@@ -2906,11 +2951,15 @@ const memoryLanceDBProPlugin = {
                     recallHistory.delete(sessionId);
                     turnCounter.delete(sessionId);
                     lastRawUserMessage.delete(sessionId);
+                    lastAssistantReply.delete(sessionId);
+                    recentUserTexts.delete(sessionId);
                 }
                 // Also clean by channelId/conversationId if present (shared cache key)
                 const cacheKey = ctx?.channelId || ctx?.conversationId || "";
                 if (cacheKey && cacheKey !== sessionId) {
                     lastRawUserMessage.delete(cacheKey);
+                    lastAssistantReply.delete(cacheKey);
+                    recentUserTexts.delete(cacheKey);
                 }
             }, { priority: 10 });
         }

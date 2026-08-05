@@ -43,6 +43,12 @@ ${conversationText}
 - Atomic memory shape: each stored memory must read like one durable fact, preference, decision, entity state, event, case, or reusable pattern. If a candidate reads like an excerpt, log, or raw transcript, compress it into one atomic statement, or skip it.
 - Length/distillation gate: if a candidate is longer than about 200 characters and reads like raw conversation instead of a distilled insight, rewrite it as a single factual statement before storing; if that is not possible, skip it.
 
+## Assistant (bot) self-statements — persona boundary (chiguo deployment rule)
+- This deployment is a persona chat bot (迟菓 talking with 哥哥). Store facts about the USER (哥哥) and real shared events/agreements only.
+- NEVER extract the assistant's own persona/behavior/style: its self-descriptions, catchphrases, tsundere mannerisms, roleplay lines, or emotional performance — the persona definition lives in the personality files, not the memory store.
+- Skip improv/roleplay content unless it encodes a concrete user fact or a real agreed commitment between user and assistant (e.g. "说好周末吃火锅" is an agreed event; "我迟菓才不会哭呢" is persona performance, skip).
+- Prefer the USER's messages as the primary source; use assistant messages only to disambiguate what the user meant or to confirm agreements.
+
 # Memory Classification
 
 ## Core Decision Logic

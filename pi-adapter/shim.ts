@@ -110,7 +110,9 @@ export function createOpenClawApiFromPi(pi: ExtensionAPI, options?: { pluginConf
     };
   }
 
-  /** before_prompt_build → before_agent_start: prependContext → systemPrompt append. */
+  /** before_prompt_build → before_agent_start: prependContext → 尾部 custom message(缓存友好)。
+   *  记忆块不再拼进 systemPrompt:system+全部历史成为稳定前缀,DeepSeek 前缀缓存可命中到上一轮;
+   *  记忆内容变化只影响尾部(记忆消息+本轮用户消息),不毒害历史缓存。 */
   function adaptBeforePromptBuild(handler: OpenClawEventHandler): (event: any, ctx: ExtensionContext) => unknown {
     return async (event, ctx) => {
       const oclEvent = {
@@ -123,10 +125,15 @@ export function createOpenClawApiFromPi(pi: ExtensionAPI, options?: { pluginConf
         const rec = result as Record<string, unknown>;
         const prepend = typeof rec.prependContext === "string" ? rec.prependContext : "";
         if (prepend) {
-          // Pi has no ephemeral context injection; appending to the system
-          // prompt gives the same per-turn visibility without persisting
-          // injected blocks into the session transcript.
-          return { systemPrompt: `${event.systemPrompt ?? ""}\n\n${prepend}` };
+          // Pi 的 before_agent_start 支持返回 message:注入为 custom 消息,
+          // 追加在 user 消息之后(消息序列尾部),不写回 systemPrompt。
+          return {
+            message: {
+              customType: "relevant-memories",
+              content: prepend,
+              display: prepend,
+            },
+          };
         }
       }
       return undefined;
